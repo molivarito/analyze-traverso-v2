@@ -1,0 +1,532 @@
+% ==================== SECCIÓN COMPLETA: MOC ====================
+% Incluir en el documento principal después de la sección de Inharmonicidad
+
+\selectlanguage{spanish}
+\subsection{MOC (Modal Octave Compression)}
+
+\subsubsection{Definición y Contexto Físico}
+
+La Compresión Modal de Octava (MOC) es una métrica que cuantifica el comportamiento no lineal del instrumento entre la primera y segunda octava. Fue introducida por Benade y otros investigadores para caracterizar cómo se comportan los modos acústicos en instrumentos de viento.
+
+\subsubsection{Derivación Completa}
+
+Partimos de la relación entre frecuencia y longitud efectiva para un tubo abierto en ambos extremos:
+
+\begin{equation}
+f_n = \frac{n c_0}{2 L_{\text{eff}}}
+\label{eq:frecuencia_tubo}
+\end{equation}
+
+donde $n$ es el número del modo, $c_0$ la velocidad del sonido, y $L_{\text{eff}}$ la longitud efectiva del tubo.
+
+Para la primera octava ($n=1$):
+\begin{equation}
+\freqplay = \frac{c_0}{2 L_{\text{eff},I}}
+\label{eq:freq_play_I}
+\end{equation}
+
+Para la segunda octava ($n=2$):
+\begin{equation}
+2\freqplay = \frac{c_0}{L_{\text{eff},II}}
+\label{eq:freq_play_II}
+\end{equation}
+
+Sin embargo, las frecuencias medidas $\freqzero$ y $\freqone$ no coinciden exactamente con estas frecuencias teóricas debido a efectos de extremos y agujeros.
+
+Definimos las desviaciones:
+\begin{align}
+\Delta L_I &= L_{\text{eff},I} - L_{\text{real}} = \frac{c_0}{2}\left(\frac{1}{\freqplay} - \frac{1}{\freqzero}\right) \\
+\Delta L_{II} &= L_{\text{eff},II} - L_{\text{real}} = c_0\left(\frac{1}{2\freqplay} - \frac{1}{\freqone}\right)
+\end{align}
+
+La diferencia entre estas desviaciones es:
+\begin{equation}
+\Delta\Delta L = \Delta L_{II} - \Delta L_I = c_0\left[\left(\frac{1}{2\freqplay} - \frac{1}{\freqone}\right) - \left(\frac{1}{\freqplay} - \frac{1}{\freqzero}\right)\right]
+\end{equation}
+
+Simplificando:
+\begin{align}
+\Delta\Delta L &= c_0\left[\frac{1}{2\freqplay} - \frac{1}{\freqone} - \frac{1}{\freqplay} + \frac{1}{\freqzero}\right] \\
+&= c_0\left[\frac{1}{\freqzero} - \frac{1}{\freqone} - \frac{1}{2\freqplay}\right] \\
+&= c_0\left[\left(\frac{1}{\freqzero} - \frac{1}{\freqplay}\right) - \left(\frac{1}{\freqone} - \frac{1}{2\freqplay}\right)\right]
+\end{align}
+
+El MOC se define como la razón entre estas diferencias de períodos:
+\begin{equation}
+\text{MOC} = \frac{\frac{1}{\freqone} - \frac{1}{2\freqplay}}{\frac{1}{\freqzero} - \frac{1}{\freqplay}}
+\label{eq:moc_def}
+\end{equation}
+
+\subsubsection{Interpretación Física}
+
+\begin{itemize}
+    \item \textbf{MOC = 1.0}: Compresión ideal, comportamiento lineal perfecto
+    \item \textbf{MOC > 1.0}: Sobre-compresión, la segunda octava está más comprimida
+    \item \textbf{MOC < 1.0}: Sub-compresión, la segunda octava está menos comprimida
+\end{itemize}
+
+El MOC está relacionado con:
+\begin{itemize}
+    \item Efectos de extremos abiertos
+    \item Comportamiento de agujeros laterales
+    \item Acoplamiento entre modos acústicos
+    \item Efectos no lineales del flujo
+\end{itemize}
+
+\selectlanguage{french}
+\subsection{MOC (Compression Modale d'Octave)}
+
+\subsubsection{Définition et Contexte Physique}
+
+La Compression Modale d'Octave (MOC) est une métrique qui quantifie le comportement non linéaire de l'instrument entre la première et la deuxième octave. Elle a été introduite par Benade et d'autres chercheurs pour caractériser comment se comportent les modes acoustiques dans les instruments à vent.
+
+% ==================== SECCIÓN COMPLETA: B_I ====================
+
+\selectlanguage{spanish}
+\subsection{B$_I$ (Bias de la Primera Octava)}
+
+\subsubsection{Definición}
+
+B$_I$ mide la desviación de la frecuencia de resonancia medida $\freqzero$ respecto a la frecuencia teórica de ejecución $\freqplay$:
+
+\begin{equation}
+B_I = 1200 \log_2\left(\frac{\freqplay}{\freqzero}\right) \quad \text{[cents]}
+\label{eq:bi_def}
+\end{equation}
+
+\subsubsection{Derivación desde la Teoría de Longitud Efectiva}
+
+Para un tubo abierto en ambos extremos, la frecuencia fundamental es:
+\begin{equation}
+\freqplay = \frac{c_0}{2 L_{\text{eff}}}
+\end{equation}
+
+donde $L_{\text{eff}}$ incluye correcciones de extremos:
+\begin{equation}
+L_{\text{eff}} = L_{\text{geom}} + \Delta L
+\end{equation}
+
+La corrección $\Delta L$ se debe a:
+\begin{itemize}
+    \item Efectos de extremo abierto (end correction)
+    \item Efectos de agujeros abiertos
+    \item Acoplamiento con el exterior
+\end{itemize}
+
+Si la frecuencia medida $\freqzero$ difiere de $\freqplay$, esto indica una longitud efectiva diferente:
+\begin{equation}
+\freqzero = \frac{c_0}{2 L_{\text{eff},0}}
+\end{equation}
+
+La relación entre frecuencias es:
+\begin{equation}
+\frac{\freqplay}{\freqzero} = \frac{L_{\text{eff},0}}{L_{\text{eff}}}
+\end{equation}
+
+Tomando logaritmo en base 2 y multiplicando por 1200:
+\begin{align}
+B_I &= 1200 \log_2\left(\frac{\freqplay}{\freqzero}\right) \\
+&= 1200 \log_2\left(\frac{L_{\text{eff},0}}{L_{\text{eff}}}\right)
+\end{align}
+
+\subsubsection{Interpretación}
+
+\begin{itemize}
+    \item \textbf{$B_I = 0$ cents}: Afinación perfecta, $\freqzero = \freqplay$
+    \item \textbf{$B_I > 0$ cents}: Nota suena más aguda de lo esperado, $\freqzero < \freqplay$
+    \item \textbf{$B_I < 0$ cents}: Nota suena más grave de lo esperado, $\freqzero > \freqplay$
+\end{itemize}
+
+\selectlanguage{french}
+\subsection{B$_I$ (Biais de la Première Octave)}
+
+% ==================== SECCIÓN COMPLETA: ESPE ====================
+
+\selectlanguage{spanish}
+\subsection{ESPE (Effective Sound Path Extension)}
+
+\subsubsection{Definición}
+
+ESPE cuantifica la diferencia en la extensión efectiva del camino del sonido entre la primera y segunda octava:
+
+\begin{equation}
+\text{ESPE} = 1200 \log_2\left(\frac{L_{\text{eff},I}}{L_{\text{eff},I} + \Delta\Delta L}\right) \quad \text{[cents]}
+\label{eq:espe_def}
+\end{equation}
+
+\subsubsection{Derivación Completa}
+
+De la ecuación~\eqref{eq:freq_play_I}, la longitud efectiva para la primera octava es:
+\begin{equation}
+L_{\text{eff},I} = \frac{c_0}{2 \freqplay}
+\end{equation}
+
+La desviación de longitud para la primera octava es:
+\begin{equation}
+\Delta L_I = \frac{c_0}{2}\left(\frac{1}{\freqplay} - \frac{1}{\freqzero}\right)
+\end{equation}
+
+Para la segunda octava:
+\begin{equation}
+\Delta L_{II} = c_0\left(\frac{1}{2\freqplay} - \frac{1}{\freqone}\right)
+\end{equation}
+
+La diferencia entre desviaciones es:
+\begin{align}
+\Delta\Delta L &= \Delta L_{II} - \Delta L_I \\
+&= c_0\left[\left(\frac{1}{2\freqplay} - \frac{1}{\freqone}\right) - \left(\frac{1}{\freqplay} - \frac{1}{\freqzero}\right)\right] \\
+&= c_0\left[\frac{1}{\freqzero} - \frac{1}{\freqone} - \frac{1}{2\freqplay}\right]
+\end{align}
+
+La longitud efectiva corregida para la segunda octava es:
+\begin{equation}
+L_{\text{eff},II} = L_{\text{eff},I} + \Delta\Delta L
+\end{equation}
+
+ESPE mide el cambio relativo:
+\begin{align}
+\text{ESPE} &= 1200 \log_2\left(\frac{L_{\text{eff},I}}{L_{\text{eff},II}}\right) \\
+&= 1200 \log_2\left(\frac{L_{\text{eff},I}}{L_{\text{eff},I} + \Delta\Delta L}\right)
+\end{align}
+
+\subsubsection{Interpretación Física}
+
+ESPE está relacionado con:
+\begin{itemize}
+    \item Cambios en la corrección de extremos entre octavas
+    \item Comportamiento diferente de agujeros en diferentes frecuencias
+    \item Efectos de acoplamiento modal
+\end{itemize}
+
+\selectlanguage{french}
+\subsection{ESPE (Extension Effective du Chemin Sonore)}
+
+% ==================== SECCIÓN COMPLETA: Q-FACTOR ====================
+
+\selectlanguage{spanish}
+\subsection{Q-Factor (Factor de Calidad)}
+
+\subsubsection{Definición}
+
+El factor de calidad Q mide la agudeza de una resonancia:
+
+\begin{equation}
+Q = \frac{\freqzero}{\Delta f}
+\label{eq:q_factor}
+\end{equation}
+
+donde $\Delta f$ es el ancho de banda a -3 dB (mitad de potencia).
+
+\subsubsection{Derivación desde la Teoría de Resonadores}
+
+Para un resonador con pérdidas, la admitancia cerca de la resonancia puede modelarse como:
+
+\begin{equation}
+\admittance(f) \approx \frac{\admittance_{\max}}{1 + j Q \left(\frac{f}{\freqzero} - \frac{\freqzero}{f}\right)}
+\end{equation}
+
+El módulo de la admitancia es:
+\begin{equation}
+|\admittance(f)| = \frac{\admittance_{\max}}{\sqrt{1 + Q^2 \left(\frac{f}{\freqzero} - \frac{\freqzero}{f}\right)^2}}
+\end{equation}
+
+A -3 dB (mitad de potencia), tenemos:
+\begin{equation}
+|\admittance(f)| = \frac{\admittance_{\max}}{\sqrt{2}}
+\end{equation}
+
+Por lo tanto:
+\begin{equation}
+1 + Q^2 \left(\frac{f}{\freqzero} - \frac{\freqzero}{f}\right)^2 = 2
+\end{equation}
+
+Resolviendo para $f$ cerca de $\freqzero$:
+\begin{equation}
+Q^2 \left(\frac{f - \freqzero}{\freqzero}\right)^2 \approx 1
+\end{equation}
+
+\begin{equation}
+\frac{f - \freqzero}{\freqzero} \approx \pm \frac{1}{Q}
+\end{equation}
+
+El ancho de banda es:
+\begin{equation}
+\Delta f = 2 \frac{\freqzero}{Q}
+\end{equation}
+
+Por lo tanto:
+\begin{equation}
+Q = \frac{\freqzero}{\Delta f/2} = \frac{2\freqzero}{\Delta f}
+\end{equation}
+
+En la práctica, medimos $\Delta f$ como la diferencia entre las frecuencias donde $|\admittance|$ cae a $\admittance_{\max}/\sqrt{2}$.
+
+\subsubsection{Interpretación}
+
+\begin{itemize}
+    \item \textbf{Q alto} ($Q > 50$): Resonancia estrecha, color tonal más puro, menos amortiguamiento
+    \item \textbf{Q medio} ($10 < Q < 50$): Resonancia moderada, balance entre pureza y riqueza
+    \item \textbf{Q bajo} ($Q < 10$): Resonancia ancha, color tonal más rico, más amortiguamiento
+\end{itemize}
+
+\selectlanguage{french}
+\subsection{Facteur de Qualité Q}
+
+% ==================== SECCIÓN COMPLETA: FRECUENCIAS VS TEMPERAMENTO ====================
+
+\selectlanguage{spanish}
+\subsection{Frecuencias de Resonancia vs Temperamento Igual}
+
+\subsubsection{Definición}
+
+Esta métrica compara las frecuencias de resonancia medidas con las frecuencias del temperamento igual (equal temperament):
+
+\begin{equation}
+\text{Desviación} = 1200 \log_2\left(\frac{\freqzero}{\freq_{\text{temp}}}\right) \quad \text{[cents]}
+\label{eq:deviation_temperament}
+\end{equation}
+
+\subsubsection{Derivación del Temperamento Igual}
+
+En el temperamento igual, la frecuencia de una nota se calcula como:
+
+\begin{equation}
+\freq_{\text{temp}} = \freq_{\text{La}} \cdot 2^{n/12}
+\end{equation}
+
+donde:
+\begin{itemize}
+    \item $\freq_{\text{La}}$ es la frecuencia del La de referencia (por defecto 415 Hz para barroco)
+    \item $n$ es el número de semitonos desde La
+\end{itemize}
+
+Para cada nota:
+\begin{align}
+\text{Re} \quad (n = -7): \quad &\freq_{\text{temp}} = 415 \cdot 2^{-7/12} \approx \SI{311.13}{\hertz} \\
+\text{Mi} \quad (n = -5): \quad &\freq_{\text{temp}} = 415 \cdot 2^{-5/12} \approx \SI{349.23}{\hertz} \\
+\text{Fa\#} \quad (n = -3): \quad &\freq_{\text{temp}} = 415 \cdot 2^{-3/12} \approx \SI{392.00}{\hertz} \\
+\text{La} \quad (n = 0): \quad &\freq_{\text{temp}} = 415 \cdot 2^{0/12} = \SI{415.00}{\hertz}
+\end{align}
+
+\subsubsection{Cálculo de Desviación}
+
+La desviación en cents se calcula como:
+
+\begin{align}
+\text{Desviación} &= 1200 \log_2\left(\frac{\freqzero}{\freq_{\text{temp}}}\right) \\
+&= 1200 \left[\log_2(\freqzero) - \log_2(\freq_{\text{temp}})\right] \\
+&= 1200 \left[\log_2(\freqzero) - \log_2(\freq_{\text{La}}) - \frac{n}{12}\right]
+\end{align}
+
+\subsubsection{Interpretación}
+
+\begin{itemize}
+    \item \textbf{Desviación = 0 cents}: Frecuencia perfectamente temperada
+    \item \textbf{Desviación > 0 cents}: Nota más aguda que el temperamento
+    \item \textbf{Desviación < 0 cents}: Nota más grave que el temperamento
+\end{itemize}
+
+Esta métrica es fundamental para evaluar la afinación del instrumento respecto a estándares musicales.
+
+\selectlanguage{french}
+\subsection{Fréquences de Résonance vs Tempérament Égal}
+
+% ==================== SECCIÓN COMPLETA: ALTURA DE PICOS ====================
+
+\selectlanguage{spanish}
+\subsection{Altura de Picos de Admitancia}
+
+\subsubsection{Definición}
+
+La altura del pico de admitancia en la frecuencia de resonancia $\freqzero$ es:
+
+\begin{equation}
+\admittance_{\max} = \max_f |\admittance(f)|
+\label{eq:admittance_peak}
+\end{equation}
+
+donde la admitancia es:
+\begin{equation}
+\admittance(f) = \frac{1}{\impedance(f)}
+\end{equation}
+
+\subsubsection{Relación con Facilidad de Emisión}
+
+La altura del pico está relacionada con la facilidad de emisión del sonido. Un pico más alto indica:
+
+\begin{itemize}
+    \item Mayor transferencia de energía desde el músico al instrumento
+    \item Menor impedancia de entrada
+    \item Mayor eficiencia acústica
+\end{itemize}
+
+Físicamente, esto se relaciona con:
+\begin{equation}
+P_{\text{acústica}} = \frac{1}{2} |U|^2 \Re(\impedance) = \frac{1}{2} |p|^2 \Re(\admittance)
+\end{equation}
+
+donde $P_{\text{acústica}}$ es la potencia acústica generada.
+
+\selectlanguage{french}
+\subsection{Hauteur des Pics d'Admittance}
+
+% ==================== SECCIÓN COMPLETA: RATIO ARMÓNICOS ====================
+
+\selectlanguage{spanish}
+\subsection{Ratio de Armónicos Pares/Impares}
+
+\subsubsection{Definición}
+
+El ratio de armónicos pares/impares caracteriza el contenido espectral del sonido:
+
+\begin{equation}
+R = \frac{A_{\text{pares}}}{A_{\text{impares}}} = \frac{A_2 + A_4 + A_6 + \ldots}{A_1 + A_3 + A_5 + \ldots}
+\label{eq:harmonic_ratio}
+\end{equation}
+
+donde $A_n$ es la amplitud del $n$-ésimo armónico.
+
+\subsubsection{Cálculo desde Admitancia}
+
+Las amplitudes se extraen de los picos de admitancia en las frecuencias de antiresonancia:
+
+\begin{align}
+A_1 &= |\admittance(\freqzero)| \\
+A_2 &= |\admittance(\freqone)| \\
+A_3 &= |\admittance(\freqtwo)|
+\end{align}
+
+donde $\freqtwo$ es la tercera frecuencia de antiresonancia.
+
+El ratio se calcula como:
+\begin{equation}
+R = \frac{A_2}{A_1 + A_3}
+\end{equation}
+
+\subsubsection{Interpretación Musical}
+
+\begin{itemize}
+    \item \textbf{$R > 1$}: Predominio de armónicos pares, sonido más brillante
+    \item \textbf{$R < 1$}: Predominio de armónicos impares, sonido más oscuro
+    \item \textbf{$R \approx 1$}: Balance entre armónicos, sonido equilibrado
+\end{itemize}
+
+\selectlanguage{french}
+\subsection{Rapport Harmoniques Pairs/Impairs}
+
+% ==================== SECCIÓN COMPLETA: COHERENCIA DE FASE ====================
+
+\selectlanguage{spanish}
+\subsection{Coherencia de Fase}
+
+\subsubsection{Definición}
+
+La coherencia de fase mide la diferencia de fase entre armónicos:
+
+\begin{equation}
+\Delta\phi = \arg(\impedance(\freqone)) - \arg(\impedance(\freqzero))
+\label{eq:phase_coherence}
+\end{equation}
+
+donde $\arg(\impedance)$ es la fase de la impedancia compleja.
+
+\subsubsection{Relación con Claridad del Sonido}
+
+La fase de la impedancia está relacionada con la respuesta temporal del instrumento. Una mayor coherencia de fase indica:
+
+\begin{itemize}
+    \item Mayor sincronización entre armónicos
+    \item Sonido más claro y definido
+    \item Menor distorsión temporal
+\end{itemize}
+
+Físicamente, la fase está relacionada con el retardo de grupo:
+\begin{equation}
+\tau_g = -\frac{d\phi}{d\omega}
+\end{equation}
+
+\selectlanguage{french}
+\subsection{Cohérence de Phase}
+
+% ==================== SECCIÓN COMPLETA: ESTABILIDAD DE PITCH ====================
+
+\selectlanguage{spanish}
+\subsection{Estabilidad de Pitch}
+
+\subsubsection{Definición}
+
+La estabilidad de pitch se basa en la pendiente de la fase cerca de la resonancia:
+
+\begin{equation}
+S = \left|\frac{d\phi}{df}\right|_{f=\freqzero}
+\label{eq:pitch_stability}
+\end{equation}
+
+\subsubsection{Derivación}
+
+Para un resonador, la fase de la impedancia cerca de la resonancia puede aproximarse como:
+
+\begin{equation}
+\phi(f) \approx \arctan\left(Q\left(\frac{f}{\freqzero} - \frac{\freqzero}{f}\right)\right)
+\end{equation}
+
+La derivada es:
+\begin{equation}
+\frac{d\phi}{df} = \frac{Q/\freqzero}{1 + Q^2\left(\frac{f}{\freqzero} - \frac{\freqzero}{f}\right)^2}
+\end{equation}
+
+Evaluando en $f = \freqzero$:
+\begin{equation}
+S = \left|\frac{d\phi}{df}\right|_{f=\freqzero} = \frac{Q}{\freqzero}
+\end{equation}
+
+\subsubsection{Interpretación}
+
+\begin{itemize}
+    \item \textbf{$S$ alto}: Mayor estabilidad, menor sensibilidad a variaciones de presión
+    \item \textbf{$S$ bajo}: Menor estabilidad, mayor sensibilidad a variaciones
+\end{itemize}
+
+\selectlanguage{french}
+\subsection{Stabilité de Hauteur}
+
+% ==================== SECCIÓN COMPLETA: CUT-OFF FREQUENCY ====================
+
+\selectlanguage{spanish}
+\subsection{Frecuencia de Corte (Cut-off Frequency)}
+
+\subsubsection{Definición}
+
+La frecuencia de corte es la frecuencia más alta donde la admitancia normalizada cae por debajo de un umbral:
+
+\begin{equation}
+\freq_{\text{cut}} = \max\left\{f : \frac{|\admittance(f)|}{|\admittance_{\max}|} \geq \theta\right\}
+\label{eq:cutoff_freq}
+\end{equation}
+
+donde $\theta$ es el umbral (típicamente 0.1 = 10\%).
+
+\subsubsection{Interpretación Física}
+
+La frecuencia de corte está relacionada con:
+
+\begin{itemize}
+    \item Límite superior del rango útil del instrumento
+    \item Capacidad de generar armónicos superiores
+    \item Eficiencia de radiación a altas frecuencias
+\end{itemize}
+
+Físicamente, está relacionada con el diámetro del conducto:
+\begin{equation}
+\freq_{\text{cut}} \propto \frac{c_0}{d}
+\end{equation}
+
+donde $d$ es el diámetro característico del conducto.
+
+\selectlanguage{french}
+\subsection{Fréquence de Coupure}
+
+% ==================== NOTA FINAL ====================
+% Estas secciones deben integrarse en el documento principal
+% en el orden apropiado dentro de la Sección 4 (Mediciones Acústicas)
+

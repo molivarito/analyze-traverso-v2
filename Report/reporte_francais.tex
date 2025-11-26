@@ -1,0 +1,1045 @@
+\documentclass[12pt,a4paper,twocolumn]{article}
+
+% ==================== CONFIGURATION DES LANGAGES ====================
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{csquotes}
+
+% ==================== PAQUETS MATHÉMATIQUES ====================
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{physics} % Pour dérivées et notation physique
+\usepackage{siunitx} % Pour unités SI
+
+% ==================== PAQUETS DE GRAPHIQUES ====================
+\usepackage{graphicx}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{tikz}
+\usepackage{pgfplots}
+\pgfplotsset{compat=1.18}
+
+% ==================== PAQUETS DE CODE ====================
+\usepackage{listings}
+\usepackage{xcolor}
+
+% Configuration de listings pour Python
+\lstset{
+    language=Python,
+    basicstyle=\ttfamily\small,
+    keywordstyle=\color{blue}\bfseries,
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    stepnumber=1,
+    numbersep=5pt,
+    backgroundcolor=\color{gray!10},
+    frame=single,
+    breaklines=true,
+    breakatwhitespace=true,
+    tabsize=4,
+    showstringspaces=false
+}
+
+% ==================== PAQUETS DE TABLEAUX ====================
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{longtable}
+
+% ==================== PAQUETS DE RÉFÉRENCES ====================
+\usepackage{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=red,
+    pdftitle={Système d'Analyse Acoustique de Flûtes Traversières},
+    pdfauthor={Auteur},
+    pdfsubject={Analyse Acoustique d'Instruments de Musique},
+    pdfkeywords={flûte traversière, OpenWind, impédance acoustique, analyse numérique}
+}
+
+% ==================== CONFIGURATION ADDITIONNELLE ====================
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{multicol}
+
+% ==================== COMMANDES PERSONNALISÉES ====================
+\newcommand{\openwind}{\textsc{OpenWind}}
+\newcommand{\flute}{flûte traversière}
+\newcommand{\impedance}{Z}
+\newcommand{\admittance}{Y}
+\newcommand{\freq}{f}
+\newcommand{\freqzero}{f_0}
+\newcommand{\freqone}{f_1}
+\newcommand{\freqplay}{f_{\text{play}}}
+\newcommand{\freqtwo}{f_2}
+
+% ==================== MÉTADONNÉES ====================
+\title{\textbf{Système d'Analyse Acoustique et de Visualisation\\des Flûtes Traversières}\\
+\large{Intégration d'OpenWind pour l'Analyse Numérique\\et la Caractérisation Acoustique}}
+\author{Auteur du Système}
+\date{\today}
+
+% ==================== DÉBUT DU DOCUMENT ====================
+\begin{document}
+
+\maketitle
+
+% ==================== RÉSUMÉ EXÉCUTIF ====================
+\begin{abstract}
+Ce document présente un système complet d'analyse acoustique et de visualisation pour les flûtes traversières historiques, développé par l'intégration de la bibliothèque \openwind{} avec des outils de visualisation 2D/3D et de gestion de données. Le système permet la caractérisation acoustique systématique par le calcul d'impédance, l'analyse d'inharmonicité, la compression modale d'octave (MOC), et de multiples métriques supplémentaires. On inclut des dérivations mathématiques complètes de toutes les mesures, une explication détaillée de l'intégration avec \openwind{}, et des études de cas avec des instruments historiques.
+
+\vspace{0.3cm}
+\textbf{Mots-clés:} flûte traversière, \openwind{}, impédance acoustique, analyse numérique, caractérisation instrumentale
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+% ==================== SECTION 1: INTRODUCTION ====================
+\section{Introduction}
+
+\subsection{Contexte Historique et Musical}
+
+Les flûtes traversières constituent une famille d'instruments à vent en bois qui ont évolué significativement depuis la Renaissance jusqu'à nos jours. Pendant la période baroque (XVIIe-XVIIIe siècles), ces instruments ont atteint un développement technique et artistique remarquable, avec des facteurs comme Hotteterre, Quantz et d'autres établissant des standards de conception qui ont influencé les générations suivantes.
+
+La caractérisation acoustique systématique de ces instruments historiques présente des défis uniques:
+\begin{itemize}
+    \item Variabilité dans les matériaux et techniques de construction
+    \item Nécessité d'analyse non destructive
+    \item Besoin de comparaison objective entre instruments
+    \item Relation complexe entre géométrie et comportement acoustique
+\end{itemize}
+
+\subsection{Objectifs du Système}
+
+Le système développé a pour objectifs principaux:
+
+\begin{enumerate}
+    \item \textbf{Analyse Acoustique Systématique}: Calcul d'impédance acoustique par méthodes numériques validées
+    \item \textbf{Caractérisation Complète}: Multiples métriques acoustiques pour évaluation objective
+    \item \textbf{Visualisation Intégrale}: Représentation 2D et 3D de géométrie et résultats acoustiques
+    \item \textbf{Gestion de Données}: Base de données pour stockage et récupération efficaces
+    \item \textbf{Outils de Conception}: Éditeur de géométrie et génération de plans d'ingénierie
+\end{enumerate}
+
+% ==================== SECTION 2: ARCHITECTURE DU SYSTÈME ====================
+\section{Architecture du Système}
+
+\subsection{Vue d'Ensemble}
+
+Le système est structuré en modules indépendants mais interconnectés, suivant les principes de conception orientée objet et de séparation des responsabilités. La Figure~\ref{fig:arquitectura} montre le diagramme d'architecture général.
+
+\begin{figure}[H]
+\centering
+% Ici irait le diagramme d'architecture (utiliser TikZ ou inclure image)
+\caption{Architecture générale du système}
+\label{fig:arquitectura}
+\textit{[Inclure diagramme d'architecture ici]}
+\end{figure}
+
+\subsection{Composants Principaux}
+
+\subsubsection{FluteData et FluteDataDB}
+
+La classe \texttt{FluteData} constitue le noyau du système, responsable de:
+\begin{itemize}
+    \item Chargement et validation de données géométriques depuis fichiers JSON
+    \item Concatenation de mesures de multiples parties (headjoint, left, right, foot)
+    \item Normalisation de coordonnées (bouchon en $x=0$)
+    \item Préparation de données pour \openwind{}
+\end{itemize}
+
+\texttt{FluteDataDB} étend \texttt{FluteData} en ajoutant:
+\begin{itemize}
+    \item Intégration avec base de données SQLite
+    \item Cache de résultats de calcul
+    \item Détection automatique de changements de paramètres
+    \item Récupération efficace de résultats précédents
+\end{itemize}
+
+\subsubsection{FluteOperations}
+
+Fournit des méthodes statiques pour:
+\begin{itemize}
+    \item Visualisation 2D de profils (physique et acoustique)
+    \item Génération de graphiques d'analyse acoustique
+    \item Calcul de métriques dérivées
+    \item Opérations de géométrie (concatenation, interpolation)
+\end{itemize}
+
+\subsubsection{FluteAnalyzer}
+
+Encapsule tous les analyses acoustiques:
+\begin{itemize}
+    \item Calcul d'inharmonicité
+    \item Calcul de MOC
+    \item Calcul de B$_I$ et ESPE
+    \item Génération de graphiques comparatifs
+\end{itemize}
+
+\subsubsection{Interface Graphique Unifiée}
+
+Développée en PyQt5, fournit:
+\begin{itemize}
+    \item Chargement et sélection de flûtes
+    \item Visualisation interactive 2D/3D
+    \item Analyse acoustique avec multiples métriques
+    \item Génération de plans d'ingénierie
+    \item Éditeur de géométrie interactif
+    \item Génération de code G pour CNC
+\end{itemize}
+
+% ==================== SECTION 3: INTÉGRATION AVEC OPENWIND ====================
+\section{Intégration avec OpenWind}
+
+\subsection{Introduction à OpenWind}
+
+\openwind{} est une bibliothèque Python développée par l'équipe d'acoustique de l'INRIA (Institut National de Recherche en Informatique et en Automatique) pour la modélisation numérique d'instruments à vent. Elle implémente des méthodes d'éléments finis et de différences finies pour résoudre les équations de l'acoustique linéaire dans des conduits de section variable.
+
+\subsection{Modèle Physique}
+
+\openwind{} résout les équations de l'acoustique linéaire dans le domaine fréquentiel. Pour un conduit de section variable $S(x)$, les équations fondamentales sont:
+
+\subsubsection{Équations de Continuité et de Quantité de Mouvement}
+
+L'équation de continuité pour les ondes acoustiques dans un conduit est:
+\begin{equation}
+\frac{\partial (\rho' S)}{\partial t} + \frac{\partial (\rho_0 S u)}{\partial x} = 0
+\label{eq:continuite}
+\end{equation}
+
+où $\rho'$ est la densité acoustique, $\rho_0$ la densité d'équilibre, $S(x)$ la section transversale, et $u$ la vitesse acoustique.
+
+L'équation de quantité de mouvement (conservation de la quantité de mouvement) est:
+\begin{equation}
+\rho_0 \frac{\partial u}{\partial t} + \frac{\partial p}{\partial x} = 0
+\label{eq:quantite_mouvement}
+\end{equation}
+
+où $p$ est la pression acoustique.
+
+\subsubsection{Équation d'État}
+
+Pour un gaz idéal avec processus adiabatiques:
+\begin{equation}
+p = c_0^2 \rho'
+\label{eq:etat}
+\end{equation}
+
+où $c_0$ est la vitesse du son:
+\begin{equation}
+c_0 = \sqrt{\gamma \frac{P_0}{\rho_0}}
+\label{eq:vitesse_son}
+\end{equation}
+
+avec $\gamma$ le coefficient adiabatique ($\gamma \approx 1.4$ pour l'air) et $P_0$ la pression d'équilibre.
+
+\subsubsection{Équation de Helmholtz}
+
+En combinant les équations précédentes et en supposant une dépendance temporelle harmonique $e^{j\omega t}$, on obtient l'équation de Helmholtz pour le conduit:
+
+\begin{equation}
+\frac{d^2 p}{dx^2} + \frac{1}{S}\frac{dS}{dx}\frac{dp}{dx} + k^2 p = 0
+\label{eq:helmholtz}
+\end{equation}
+
+où $k = \omega/c_0$ est le nombre d'onde et $\omega = 2\pi f$ est la fréquence angulaire.
+
+\subsection{Configuration du Modèle pour Flûte Traversière}
+
+\subsubsection{Player("FLUTE")}
+
+La classe \texttt{Player} dans \openwind{} configure des paramètres spécifiques de l'instrument. Pour la flûte traversière, \texttt{Player("FLUTE")} établit:
+
+\begin{itemize}
+    \item \textbf{Radiation d'embouchure}: Modèle de radiation depuis le trou d'embouchure vers l'extérieur
+    \item \textbf{Radiation des trous}: Modèle \textit{unflanged} pour les trous latéraux ouverts
+    \item \textbf{Radiation de pavillon}: Modèle \textit{unflanged} pour l'extrémité ouverte
+    \item \textbf{Pertes dans les parois}: Modèle de Webster-Lokshin pour pertes visqueuses et thermiques
+\end{itemize}
+
+\subsubsection{Construction de la Géométrie}
+
+La géométrie est construite à partir de mesures discrètes du diamètre interne. Pour chaque partie de la flûte, on a des points $(x_i, d_i)$ où $x_i$ est la position axiale et $d_i$ le diamètre interne.
+
+La conversion au format \openwind{} nécessite:
+\begin{enumerate}
+    \item \textbf{Normalisation de coordonnées}: Le bouchon (stopper) est placé en $x=0$
+    \item \textbf{Conversion en rayons}: $r_i = d_i/2$
+    \item \textbf{Conversion d'unités}: De millimètres à mètres
+    \item \textbf{Interpolation}: \openwind{} interpole entre points discrets
+\end{enumerate}
+
+Le format de géométrie pour \openwind{} est:
+\begin{equation}
+\text{geom} = [[x_0, r_0], [x_1, r_1], \ldots, [x_n, r_n]]
+\label{eq:geometrie_openwind}
+\end{equation}
+
+où toutes les coordonnées sont en mètres.
+
+\subsubsection{Trous Latéraux}
+
+Les trous latéraux sont spécifiés par:
+\begin{itemize}
+    \item Position axiale $x_h$
+    \item Diamètre $d_h$
+    \item Hauteur de cheminée $h_h$ (chimney height)
+    \item État (ouvert/fermé selon doigté)
+\end{itemize}
+
+Pour chaque note, on spécifie quels trous sont ouverts via un fichier de doigté (fingering chart).
+
+\subsubsection{Calcul d'Impédance}
+
+L'objet \texttt{ImpedanceComputation} calcule l'impédance acoustique d'entrée:
+
+\begin{equation}
+\impedance(f) = \frac{p(0)}{U(0)}
+\label{eq:impedance}
+\end{equation}
+
+où $p(0)$ est la pression acoustique à l'embouchure et $U(0) = S(0) u(0)$ est le débit volumétrique acoustique.
+
+L'admittance est:
+\begin{equation}
+\admittance(f) = \frac{1}{\impedance(f)}
+\label{eq:admittance}
+\end{equation}
+
+\openwind{} résout l'équation de Helmholtz numériquement pour une plage de fréquences:
+\begin{equation}
+f \in [f_{\min}, f_{\max}] \quad \text{avec pas } \Delta f
+\label{eq:plage_frequences}
+\end{equation}
+
+Dans notre système: $f_{\min} = \SI{100}{\hertz}$, $f_{\max} = \SI{3000}{\hertz}$, $\Delta f = \SI{2}{\hertz}$.
+
+\subsubsection{Fréquences d'Antirésonance}
+
+Les fréquences d'antirésonance correspondent aux maxima d'admittance (minima d'impédance). Elles sont extraites par:
+
+\begin{equation}
+\freqzero = \arg\max_f |\admittance(f)|
+\label{eq:antiresonance_1}
+\end{equation}
+
+\begin{equation}
+\freqone = \arg\max_{f > \freqzero} |\admittance(f)|
+\label{eq:antiresonance_2}
+\end{equation}
+
+Ces fréquences sont fondamentales pour le calcul de toutes les métriques acoustiques.
+
+% ==================== SECTION 4: MESURES ACOUSTIQUES ====================
+\section{Mesures Acoustiques}
+
+\subsection{Inharmonicité}
+
+\subsubsection{Définition et Dérivation}
+
+L'inharmonicité mesure la déviation du deuxième pic d'impédance par rapport au double du premier. Pour un système parfaitement harmonique, on s'attendrait à:
+
+\begin{equation}
+\freqone = 2\freqzero
+\label{eq:harmonique_ideal}
+\end{equation}
+
+Cependant, dans les instruments réels, cette relation n'est pas exactement respectée. L'inharmonicité est définie comme:
+
+\begin{equation}
+\text{Inharmonicité} = 1200 \log_2\left(\frac{\freqone}{2\freqzero}\right) \quad \text{[cents]}
+\label{eq:inharmonicite}
+\end{equation}
+
+\subsubsection{Dérivation Complète}
+
+Partant de la définition de cents:
+\begin{equation}
+\text{cents} = 1200 \log_2\left(\frac{f_2}{f_1}\right)
+\label{eq:cents_def}
+\end{equation}
+
+Pour notre cas, on compare $\freqone$ avec $2\freqzero$:
+\begin{align}
+\text{Inharmonicité} &= 1200 \log_2\left(\frac{\freqone}{2\freqzero}\right) \\
+&= 1200 \left[\log_2(\freqone) - \log_2(2\freqzero)\right] \\
+&= 1200 \left[\log_2(\freqone) - \log_2(2) - \log_2(\freqzero)\right] \\
+&= 1200 \left[\log_2(\freqone) - 1 - \log_2(\freqzero)\right] \\
+&= 1200 \log_2\left(\frac{\freqone}{\freqzero}\right) - 1200
+\label{eq:inharmonicite_deriv}
+\end{align}
+
+\subsubsection{Interprétation Physique}
+
+\begin{itemize}
+    \item \textbf{Inharmonicité = 0 cents}: Système parfaitement harmonique
+    \item \textbf{Inharmonicité > 0}: Deuxième pic plus haut que prévu (harmoniques plus aigus)
+    \item \textbf{Inharmonicité < 0}: Deuxième pic plus bas que prévu (harmoniques plus graves)
+\end{itemize}
+
+L'inharmonicité est liée à:
+\begin{itemize}
+    \item Effets d'extrémités ouvertes
+    \item Comportement non linéaire de l'écoulement
+    \item Couplage entre modes
+\end{itemize}
+
+\subsection{MOC (Compression Modale d'Octave)}
+
+\subsubsection{Définition et Contexte Physique}
+
+La Compression Modale d'Octave (MOC) est une métrique qui quantifie le comportement non linéaire de l'instrument entre la première et la deuxième octave. Elle a été introduite par Benade et d'autres chercheurs pour caractériser comment se comportent les modes acoustiques dans les instruments à vent.
+
+\subsubsection{Dérivation Complète}
+
+On part de la relation entre fréquence et longueur effective pour un tube ouvert aux deux extrémités:
+
+\begin{equation}
+f_n = \frac{n c_0}{2 L_{\text{eff}}}
+\label{eq:frequence_tube}
+\end{equation}
+
+où $n$ est le numéro du mode, $c_0$ la vitesse du son, et $L_{\text{eff}}$ la longueur effective du tube.
+
+Pour la première octave ($n=1$):
+\begin{equation}
+\freqplay = \frac{c_0}{2 L_{\text{eff},I}}
+\label{eq:freq_play_I}
+\end{equation}
+
+Pour la deuxième octave ($n=2$):
+\begin{equation}
+2\freqplay = \frac{c_0}{L_{\text{eff},II}}
+\label{eq:freq_play_II}
+\end{equation}
+
+Cependant, les fréquences mesurées $\freqzero$ et $\freqone$ ne coïncident pas exactement avec ces fréquences théoriques en raison des effets d'extrémités et de trous.
+
+On définit les déviations:
+\begin{align}
+\Delta L_I &= L_{\text{eff},I} - L_{\text{réel}} = \frac{c_0}{2}\left(\frac{1}{\freqplay} - \frac{1}{\freqzero}\right) \\
+\Delta L_{II} &= L_{\text{eff},II} - L_{\text{réel}} = c_0\left(\frac{1}{2\freqplay} - \frac{1}{\freqone}\right)
+\label{eq:deviations_longueur}
+\end{align}
+
+La différence entre ces déviations est:
+\begin{equation}
+\Delta\Delta L = \Delta L_{II} - \Delta L_I = c_0\left[\left(\frac{1}{2\freqplay} - \frac{1}{\freqone}\right) - \left(\frac{1}{\freqplay} - \frac{1}{\freqzero}\right)\right]
+\label{eq:delta_delta_L}
+\end{equation}
+
+En simplifiant:
+\begin{align}
+\Delta\Delta L &= c_0\left[\frac{1}{2\freqplay} - \frac{1}{\freqone} - \frac{1}{\freqplay} + \frac{1}{\freqzero}\right] \\
+&= c_0\left[\frac{1}{\freqzero} - \frac{1}{\freqone} - \frac{1}{2\freqplay}\right] \\
+&= c_0\left[\left(\frac{1}{\freqzero} - \frac{1}{\freqplay}\right) - \left(\frac{1}{\freqone} - \frac{1}{2\freqplay}\right)\right]
+\label{eq:delta_delta_L_simplifie}
+\end{align}
+
+Le MOC est défini comme le rapport entre ces différences de périodes:
+\begin{equation}
+\text{MOC} = \frac{\frac{1}{\freqone} - \frac{1}{2\freqplay}}{\frac{1}{\freqzero} - \frac{1}{\freqplay}}
+\label{eq:moc_def}
+\end{equation}
+
+\subsubsection{Interprétation Physique}
+
+\begin{itemize}
+    \item \textbf{MOC = 1.0}: Compression idéale, comportement linéaire parfait
+    \item \textbf{MOC > 1.0}: Sur-compression, la deuxième octave est plus comprimée
+    \item \textbf{MOC < 1.0}: Sous-compression, la deuxième octave est moins comprimée
+\end{itemize}
+
+Le MOC est lié à:
+\begin{itemize}
+    \item Effets d'extrémités ouvertes
+    \item Comportement des trous latéraux
+    \item Couplage entre modes acoustiques
+    \item Effets non linéaires de l'écoulement
+\end{itemize}
+
+\subsection{B$_I$ (Biais de la Première Octave)}
+
+\subsubsection{Définition}
+
+B$_I$ mesure la déviation de la fréquence de résonance mesurée $\freqzero$ par rapport à la fréquence théorique d'exécution $\freqplay$:
+
+\begin{equation}
+B_I = 1200 \log_2\left(\frac{\freqplay}{\freqzero}\right) \quad \text{[cents]}
+\label{eq:bi_def}
+\end{equation}
+
+\subsubsection{Dérivation depuis la Théorie de Longueur Effective}
+
+Pour un tube ouvert aux deux extrémités, la fréquence fondamentale est:
+\begin{equation}
+\freqplay = \frac{c_0}{2 L_{\text{eff}}}
+\label{eq:freq_fondamentale}
+\end{equation}
+
+où $L_{\text{eff}}$ inclut des corrections d'extrémités:
+\begin{equation}
+L_{\text{eff}} = L_{\text{geom}} + \Delta L
+\label{eq:longueur_effective}
+\end{equation}
+
+La correction $\Delta L$ est due à:
+\begin{itemize}
+    \item Effets d'extrémité ouverte (end correction)
+    \item Effets de trous ouverts
+    \item Couplage avec l'extérieur
+\end{itemize}
+
+Si la fréquence mesurée $\freqzero$ diffère de $\freqplay$, cela indique une longueur effective différente:
+\begin{equation}
+\freqzero = \frac{c_0}{2 L_{\text{eff},0}}
+\label{eq:freq_mesuree}
+\end{equation}
+
+La relation entre fréquences est:
+\begin{equation}
+\frac{\freqplay}{\freqzero} = \frac{L_{\text{eff},0}}{L_{\text{eff}}}
+\label{eq:relation_frequences}
+\end{equation}
+
+En prenant le logarithme en base 2 et en multipliant par 1200:
+\begin{align}
+B_I &= 1200 \log_2\left(\frac{\freqplay}{\freqzero}\right) \\
+&= 1200 \log_2\left(\frac{L_{\text{eff},0}}{L_{\text{eff}}}\right)
+\label{eq:bi_deriv}
+\end{align}
+
+\subsubsection{Interprétation}
+
+\begin{itemize}
+    \item \textbf{$B_I = 0$ cents}: Accord parfait, $\freqzero = \freqplay$
+    \item \textbf{$B_I > 0$ cents}: Note sonne plus aigu que prévu, $\freqzero < \freqplay$
+    \item \textbf{$B_I < 0$ cents}: Note sonne plus grave que prévu, $\freqzero > \freqplay$
+\end{itemize}
+
+\subsection{ESPE (Extension Effective du Chemin Sonore)}
+
+\subsubsection{Définition}
+
+ESPE quantifie la différence dans l'extension effective du chemin sonore entre la première et la deuxième octave:
+
+\begin{equation}
+\text{ESPE} = 1200 \log_2\left(\frac{L_{\text{eff},I}}{L_{\text{eff},I} + \Delta\Delta L}\right) \quad \text{[cents]}
+\label{eq:espe_def}
+\end{equation}
+
+\subsubsection{Dérivation Complète}
+
+De l'équation~\eqref{eq:freq_play_I}, la longueur effective pour la première octave est:
+\begin{equation}
+L_{\text{eff},I} = \frac{c_0}{2 \freqplay}
+\label{eq:longueur_effective_I}
+\end{equation}
+
+La déviation de longueur pour la première octave est:
+\begin{equation}
+\Delta L_I = \frac{c_0}{2}\left(\frac{1}{\freqplay} - \frac{1}{\freqzero}\right)
+\label{eq:delta_L_I}
+\end{equation}
+
+Pour la deuxième octave:
+\begin{equation}
+\Delta L_{II} = c_0\left(\frac{1}{2\freqplay} - \frac{1}{\freqone}\right)
+\label{eq:delta_L_II}
+\end{equation}
+
+La différence entre déviations est:
+\begin{align}
+\Delta\Delta L &= \Delta L_{II} - \Delta L_I \\
+&= c_0\left[\left(\frac{1}{2\freqplay} - \frac{1}{\freqone}\right) - \left(\frac{1}{\freqplay} - \frac{1}{\freqzero}\right)\right] \\
+&= c_0\left[\frac{1}{\freqzero} - \frac{1}{\freqone} - \frac{1}{2\freqplay}\right]
+\label{eq:delta_delta_L_espe}
+\end{align}
+
+La longueur effective corrigée pour la deuxième octave est:
+\begin{equation}
+L_{\text{eff},II} = L_{\text{eff},I} + \Delta\Delta L
+\label{eq:longueur_effective_II}
+\end{equation}
+
+ESPE mesure le changement relatif:
+\begin{align}
+\text{ESPE} &= 1200 \log_2\left(\frac{L_{\text{eff},I}}{L_{\text{eff},II}}\right) \\
+&= 1200 \log_2\left(\frac{L_{\text{eff},I}}{L_{\text{eff},I} + \Delta\Delta L}\right)
+\label{eq:espe_deriv}
+\end{align}
+
+\subsubsection{Interprétation Physique}
+
+ESPE est lié à:
+\begin{itemize}
+    \item Changements dans la correction d'extrémités entre octaves
+    \item Comportement différent des trous à différentes fréquences
+    \item Effets de couplage modal
+\end{itemize}
+
+\subsection{Facteur de Qualité Q}
+
+\subsubsection{Définition}
+
+Le facteur de qualité Q mesure la netteté d'une résonance:
+
+\begin{equation}
+Q = \frac{\freqzero}{\Delta f}
+\label{eq:q_factor}
+\end{equation}
+
+où $\Delta f$ est la largeur de bande à -3 dB (moitié de puissance).
+
+\subsubsection{Dérivation depuis la Théorie des Résonateurs}
+
+Pour un résonateur avec pertes, l'admittance près de la résonance peut être modélisée comme:
+
+\begin{equation}
+\admittance(f) \approx \frac{\admittance_{\max}}{1 + j Q \left(\frac{f}{\freqzero} - \frac{\freqzero}{f}\right)}
+\label{eq:admittance_resonateur}
+\end{equation}
+
+Le module de l'admittance est:
+\begin{equation}
+|\admittance(f)| = \frac{\admittance_{\max}}{\sqrt{1 + Q^2 \left(\frac{f}{\freqzero} - \frac{\freqzero}{f}\right)^2}}
+\label{eq:admittance_module}
+\end{equation}
+
+À -3 dB (moitié de puissance), on a:
+\begin{equation}
+|\admittance(f)| = \frac{\admittance_{\max}}{\sqrt{2}}
+\label{eq:admittance_3db}
+\end{equation}
+
+Par conséquent:
+\begin{equation}
+1 + Q^2 \left(\frac{f}{\freqzero} - \frac{\freqzero}{f}\right)^2 = 2
+\label{eq:q_equation}
+\end{equation}
+
+En résolvant pour $f$ près de $\freqzero$:
+\begin{equation}
+Q^2 \left(\frac{f - \freqzero}{\freqzero}\right)^2 \approx 1
+\label{eq:q_approximation}
+\end{equation}
+
+\begin{equation}
+\frac{f - \freqzero}{\freqzero} \approx \pm \frac{1}{Q}
+\label{eq:q_relation}
+\end{equation}
+
+La largeur de bande est:
+\begin{equation}
+\Delta f = 2 \frac{\freqzero}{Q}
+\label{eq:largeur_bande}
+\end{equation}
+
+Par conséquent:
+\begin{equation}
+Q = \frac{\freqzero}{\Delta f/2} = \frac{2\freqzero}{\Delta f}
+\label{eq:q_final}
+\end{equation}
+
+En pratique, on mesure $\Delta f$ comme la différence entre les fréquences où $|\admittance|$ tombe à $\admittance_{\max}/\sqrt{2}$.
+
+\subsubsection{Interprétation}
+
+\begin{itemize}
+    \item \textbf{Q élevé} ($Q > 50$): Résonance étroite, couleur tonale plus pure, moins d'amortissement
+    \item \textbf{Q moyen} ($10 < Q < 50$): Résonance modérée, équilibre entre pureté et richesse
+    \item \textbf{Q faible} ($Q < 10$): Résonance large, couleur tonale plus riche, plus d'amortissement
+\end{itemize}
+
+\subsection{Fréquences de Résonance vs Tempérament Égal}
+
+\subsubsection{Définition}
+
+Cette métrique compare les fréquences de résonance mesurées avec les fréquences du tempérament égal (equal temperament):
+
+\begin{equation}
+\text{Déviation} = 1200 \log_2\left(\frac{\freqzero}{\freq_{\text{temp}}}\right) \quad \text{[cents]}
+\label{eq:deviation_temperament}
+\end{equation}
+
+\subsubsection{Dérivation du Tempérament Égal}
+
+Dans le tempérament égal, la fréquence d'une note est calculée comme:
+
+\begin{equation}
+\freq_{\text{temp}} = \freq_{\text{La}} \cdot 2^{n/12}
+\label{eq:temperament_egal}
+\end{equation}
+
+où:
+\begin{itemize}
+    \item $\freq_{\text{La}}$ est la fréquence du La de référence (par défaut 415 Hz pour baroque)
+    \item $n$ est le nombre de demi-tons depuis La
+\end{itemize}
+
+Pour chaque note:
+\begin{align}
+\text{Ré} \quad (n = -7): \quad &\freq_{\text{temp}} = 415 \cdot 2^{-7/12} \approx \SI{311.13}{\hertz} \\
+\text{Mi} \quad (n = -5): \quad &\freq_{\text{temp}} = 415 \cdot 2^{-5/12} \approx \SI{349.23}{\hertz} \\
+\text{Fa\#} \quad (n = -3): \quad &\freq_{\text{temp}} = 415 \cdot 2^{-3/12} \approx \SI{392.00}{\hertz} \\
+\text{La} \quad (n = 0): \quad &\freq_{\text{temp}} = 415 \cdot 2^{0/12} = \SI{415.00}{\hertz}
+\label{eq:frequences_notes}
+\end{align}
+
+\subsubsection{Calcul de Déviation}
+
+La déviation en cents est calculée comme:
+
+\begin{align}
+\text{Déviation} &= 1200 \log_2\left(\frac{\freqzero}{\freq_{\text{temp}}}\right) \\
+&= 1200 \left[\log_2(\freqzero) - \log_2(\freq_{\text{temp}})\right] \\
+&= 1200 \left[\log_2(\freqzero) - \log_2(\freq_{\text{La}}) - \frac{n}{12}\right]
+\label{eq:deviation_deriv}
+\end{align}
+
+\subsubsection{Interprétation}
+
+\begin{itemize}
+    \item \textbf{Déviation = 0 cents}: Fréquence parfaitement tempérée
+    \item \textbf{Déviation > 0 cents}: Note plus aiguë que le tempérament
+    \item \textbf{Déviation < 0 cents}: Note plus grave que le tempérament
+\end{itemize}
+
+Cette métrique est fondamentale pour évaluer l'accord de l'instrument par rapport aux standards musicaux.
+
+\subsection{Hauteur des Pics d'Admittance}
+
+\subsubsection{Définition}
+
+La hauteur du pic d'admittance à la fréquence de résonance $\freqzero$ est:
+
+\begin{equation}
+\admittance_{\max} = \max_f |\admittance(f)|
+\label{eq:admittance_peak}
+\end{equation}
+
+où l'admittance est:
+\begin{equation}
+\admittance(f) = \frac{1}{\impedance(f)}
+\label{eq:admittance_def}
+\end{equation}
+
+\subsubsection{Relation avec la Facilité d'Émission}
+
+La hauteur du pic est liée à la facilité d'émission du son. Un pic plus haut indique:
+
+\begin{itemize}
+    \item Plus grand transfert d'énergie du musicien à l'instrument
+    \item Impédance d'entrée plus faible
+    \item Efficacité acoustique plus grande
+\end{itemize}
+
+Physiquement, cela est lié à:
+\begin{equation}
+P_{\text{acoustique}} = \frac{1}{2} |U|^2 \Re(\impedance) = \frac{1}{2} |p|^2 \Re(\admittance)
+\label{eq:puissance_acoustique}
+\end{equation}
+
+où $P_{\text{acoustique}}$ est la puissance acoustique générée.
+
+\subsection{Rapport Harmoniques Pairs/Impairs}
+
+\subsubsection{Définition}
+
+Le rapport harmoniques pairs/impairs caractérise le contenu spectral du son:
+
+\begin{equation}
+R = \frac{A_{\text{pairs}}}{A_{\text{impairs}}} = \frac{A_2 + A_4 + A_6 + \ldots}{A_1 + A_3 + A_5 + \ldots}
+\label{eq:harmonic_ratio}
+\end{equation}
+
+où $A_n$ est l'amplitude du $n$-ième harmonique.
+
+\subsubsection{Calcul depuis l'Admittance}
+
+Les amplitudes sont extraites des pics d'admittance aux fréquences d'antirésonance:
+
+\begin{align}
+A_1 &= |\admittance(\freqzero)| \\
+A_2 &= |\admittance(\freqone)| \\
+A_3 &= |\admittance(\freqtwo)|
+\label{eq:amplitudes_harmoniques}
+\end{align}
+
+où $\freqtwo$ est la troisième fréquence d'antirésonance.
+
+Le rapport est calculé comme:
+\begin{equation}
+R = \frac{A_2}{A_1 + A_3}
+\label{eq:ratio_calcul}
+\end{equation}
+
+\subsubsection{Interprétation Musicale}
+
+\begin{itemize}
+    \item \textbf{$R > 1$}: Prédominance d'harmoniques pairs, son plus brillant
+    \item \textbf{$R < 1$}: Prédominance d'harmoniques impairs, son plus sombre
+    \item \textbf{$R \approx 1$}: Équilibre entre harmoniques, son équilibré
+\end{itemize}
+
+\subsection{Cohérence de Phase}
+
+\subsubsection{Définition}
+
+La cohérence de phase mesure la différence de phase entre harmoniques:
+
+\begin{equation}
+\Delta\phi = \arg(\impedance(\freqone)) - \arg(\impedance(\freqzero))
+\label{eq:phase_coherence}
+\end{equation}
+
+où $\arg(\impedance)$ est la phase de l'impédance complexe.
+
+\subsubsection{Relation avec la Clarté du Son}
+
+La phase de l'impédance est liée à la réponse temporelle de l'instrument. Une plus grande cohérence de phase indique:
+
+\begin{itemize}
+    \item Plus grande synchronisation entre harmoniques
+    \item Son plus clair et défini
+    \item Moins de distorsion temporelle
+\end{itemize}
+
+Physiquement, la phase est liée au retard de groupe:
+\begin{equation}
+\tau_g = -\frac{d\phi}{d\omega}
+\label{eq:retard_groupe}
+\end{equation}
+
+\subsection{Stabilité de Hauteur}
+
+\subsubsection{Définition}
+
+La stabilité de hauteur est basée sur la pente de la phase près de la résonance:
+
+\begin{equation}
+S = \left|\frac{d\phi}{df}\right|_{f=\freqzero}
+\label{eq:pitch_stability}
+\end{equation}
+
+\subsubsection{Dérivation}
+
+Pour un résonateur, la phase de l'impédance près de la résonance peut être approximée comme:
+
+\begin{equation}
+\phi(f) \approx \arctan\left(Q\left(\frac{f}{\freqzero} - \frac{\freqzero}{f}\right)\right)
+\label{eq:phase_approximation}
+\end{equation}
+
+La dérivée est:
+\begin{equation}
+\frac{d\phi}{df} = \frac{Q/\freqzero}{1 + Q^2\left(\frac{f}{\freqzero} - \frac{\freqzero}{f}\right)^2}
+\label{eq:derivee_phase}
+\end{equation}
+
+En évaluant à $f = \freqzero$:
+\begin{equation}
+S = \left|\frac{d\phi}{df}\right|_{f=\freqzero} = \frac{Q}{\freqzero}
+\label{eq:stabilite_final}
+\end{equation}
+
+\subsubsection{Interprétation}
+
+\begin{itemize}
+    \item \textbf{$S$ élevé}: Plus grande stabilité, moins de sensibilité aux variations de pression
+    \item \textbf{$S$ faible}: Moins de stabilité, plus de sensibilité aux variations
+\end{itemize}
+
+\subsection{Fréquence de Coupure}
+
+\subsubsection{Définition}
+
+La fréquence de coupure est la fréquence la plus élevée où l'admittance normalisée tombe en dessous d'un seuil:
+
+\begin{equation}
+\freq_{\text{cut}} = \max\left\{f : \frac{|\admittance(f)|}{|\admittance_{\max}|} \geq \theta\right\}
+\label{eq:cutoff_freq}
+\end{equation}
+
+où $\theta$ est le seuil (typiquement 0.1 = 10\%).
+
+\subsubsection{Interprétation Physique}
+
+La fréquence de coupure est liée à:
+
+\begin{itemize}
+    \item Limite supérieure de la plage utile de l'instrument
+    \item Capacité de générer des harmoniques supérieurs
+    \item Efficacité de radiation aux hautes fréquences
+\end{itemize}
+
+Physiquement, elle est liée au diamètre du conduit:
+\begin{equation}
+\freq_{\text{cut}} \propto \frac{c_0}{d}
+\label{eq:cutoff_diametre}
+\end{equation}
+
+où $d$ est le diamètre caractéristique du conduit.
+
+% ==================== SECTION 5: VISUALISATIONS ====================
+\section{Visualisations}
+
+\subsection{Visualisation 2D}
+
+Le système fournit plusieurs types de visualisation 2D:
+
+\subsubsection{Profil Physique}
+
+Montre l'assemblage réel de la flûte avec joints mortaise/tenon, respectant les longueurs physiques de chaque partie.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\columnwidth]{figuras/perfil_fisico.png}
+\caption{Profil physique montrant l'assemblage réel}
+\label{fig:profil_physique}
+\end{figure}
+
+\subsubsection{Profil Acoustique}
+
+Montre la géométrie acoustique concaténée, avec le bouchon (stopper) en $x=0$, montrant la longueur acoustique effective.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\columnwidth]{figuras/perfil_acustico.png}
+\caption{Profil acoustique avec bouchon en x=0}
+\label{fig:profil_acoustique}
+\end{figure}
+
+% Continuar con más secciones...
+
+% ==================== SECTION 6: ÉTUDES DE CAS ====================
+\section{Études de Cas}
+
+\subsection{Cas 1: Analyse d'une Flûte Historique}
+
+[Inclure analyse détaillée d'une flûte spécifique avec captures d'écran]
+
+\subsection{Cas 2: Comparaison de Deux Flûtes}
+
+[Inclure comparaison côte à côte avec analyse des différences]
+
+\subsection{Cas 3: Optimisation de Conception}
+
+[Inclure exemple de modification de géométrie et évaluation de l'impact acoustique]
+
+% ==================== SECTION 7: BASE DE DONNÉES ====================
+\section{Base de Données}
+
+\subsection{Schéma}
+
+La base de données SQLite stocke:
+
+\begin{itemize}
+    \item \textbf{Table \texttt{flute}}: Informations générales de chaque flûte
+    \item \textbf{Table \texttt{flute\_geometry}}: Mesures géométriques discrètes
+    \item \textbf{Table \texttt{calculation\_parameters}}: Paramètres de calcul (température, diapason, etc.)
+    \item \textbf{Table \texttt{acoustic\_analysis\_results}}: Résultats d'impédance sérialisés
+    \item \textbf{Table \texttt{external\_geometry}}: Profils externes
+\end{itemize}
+
+\subsection{Optimisation}
+
+Pour réduire la taille de la base de données:
+
+\begin{itemize}
+    \item Cache de résultats d'impédance (évite recalculs)
+    \item Hash de paramètres pour détection de changements
+    \item Optimisation des données de pression/flux (seulement 3 premiers harmoniques)
+    \item Nettoyage périodique de données volumineuses
+\end{itemize}
+
+% ==================== SECTION 8: OUTILS ADDITIONNELS ====================
+\section{Outils Additionnels}
+
+\subsection{Éditeur de Géométrie}
+
+Éditeur interactif qui permet:
+\begin{itemize}
+    \item Modifier les points du profil interne (glisser, ajouter, supprimer)
+    \item Éditer les trous (position, diamètre, hauteur de cheminée)
+    \item Contrôle de versions (undo/redo)
+    \item Comparaison acoustique original vs modifié
+    \item Sauvegarde comme nouvelle flûte
+\end{itemize}
+
+\subsection{Génération de Code G}
+
+Génère du code NC pour tour CNC:
+\begin{itemize}
+    \item Stratégies de dégrossissage (longitudinal/transversal)
+    \item Paramètres configurables (vitesse, avance, profondeur)
+    \item Visualisation de trajectoires
+    \item Mode économique optionnel
+\end{itemize}
+
+\subsection{Plans d'Ingénierie}
+
+Génère des PDFs vectoriels professionnels:
+\begin{itemize}
+    \item Pages multiples (parties individuelles + assemblage)
+    \item Tableaux de dimensions et trous
+    \item Grille millimétrique
+    \item Cotes et annotations
+\end{itemize}
+
+% ==================== RÉFÉRENCES ====================
+\begin{thebibliography}{99}
+
+\bibitem{openwind2020}
+Helie, T., \& Matignon, D. (2020).
+\textit{OpenWind: A Python Library for Wind Instrument Modeling}.
+INRIA Research Report.
+
+\bibitem{webster1919}
+Webster, A. G. (1919).
+Acoustical impedance, and the theory of horns and of the phonograph.
+\textit{Proceedings of the National Academy of Sciences}, 5(7), 275-282.
+
+\bibitem{benade1990}
+Benade, A. H. (1990).
+\textit{Fundamentals of Musical Acoustics}.
+Dover Publications, New York.
+
+\bibitem{chaigne2013}
+Chaigne, A., \& Kergomard, J. (2013).
+\textit{Acoustics of Musical Instruments}.
+Springer, New York.
+
+\bibitem{flutehistory}
+Toff, N. (1996).
+\textit{The Flute Book: A Complete Guide for Students and Performers}.
+Oxford University Press, Oxford.
+
+\bibitem{quantz1752}
+Quantz, J. J. (1752).
+\textit{Versuch einer Anweisung die Flöte traversiere zu spielen}.
+Berlin.
+
+\bibitem{ricci2003}
+Ricci, A. (2003).
+\textit{The Baroque Flute Fingering Book}.
+Ricci Publications.
+
+\bibitem{powell2002}
+Powell, A. (2002).
+\textit{The Flute}.
+Yale University Press, New Haven.
+
+\end{thebibliography}
+
+\end{document}
+

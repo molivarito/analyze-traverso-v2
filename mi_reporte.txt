@@ -1,0 +1,511 @@
+================================================================================
+REPORTE DETALLADO DE FLAUTAS EN BASE DE DATOS
+================================================================================
+
+RESUMEN GENERAL
+--------------------------------------------------------------------------------
+Total de flautas procesadas: 28
+  ✓ Exitosas: 27
+  ✗ Fallidas: 1
+
+ESTADÍSTICAS
+--------------------------------------------------------------------------------
+Flautas con errores: 1
+Flautas con advertencias: 16
+Flautas con geometría externa faltante: 0
+
+================================================================================
+DETALLE POR FLAUTA
+================================================================================
+
+
+[1/28] Bizey
+--------------------------------------------------------------------------------
+Estado: ✗ Error al cargar
+ID en BD: 4
+
+❌ ERRORES:
+  • right: Parte 'right': Los datos faltan o no son un diccionario.
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint', agujero 1: Diámetro elíptico (8.05x7.40mm) interpretado. Usando diámetro circular equivalente: 7.72mm.
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -19.05mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 29.95mm.
+
+📊 Notas calculadas: 0
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  left:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  right:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  foot:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+
+⚠️  Partes faltantes: right
+
+⚠️  INCONSISTENCIAS EN DATOS:
+  • Parte 'right' no tiene datos internos
+
+📁 ARCHIVOS FALTANTES:
+  • Externos: headjoint, left, right, foot
+
+
+[2/28] Deppe
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 1
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[3/28] Freyer
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 3
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[4/28] Grenser-Montero
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 7
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+📁 ARCHIVOS FALTANTES:
+  • Externos: headjoint
+
+
+[5/28] Grenser
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 8
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -17.97mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 36.58mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  left:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  right:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  foot:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+
+📁 ARCHIVOS FALTANTES:
+  • Externos: headjoint, left, right, foot
+
+
+[6/28] Grenser-Weemaels
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 2
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  left:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  right:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  foot:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+
+📁 ARCHIVOS FALTANTES:
+  • Externos: headjoint, left, right, foot
+
+
+[7/28] Heinrich v1
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 9
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[8/28] Heinrich v2
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 10
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[9/28] Kirst v1
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 11
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[10/28] Kirst v2 A 440hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 12
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.30mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 47.20mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[11/28] Lot v1 A 415hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 13
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.50mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 45.10mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[12/28] Lot v2 A 425 a 430hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 14
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.50mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 45.10mm.
+  • foot: Parte 'foot', medición 11: 'position' (99101.5) excede 'Total length' (101.5).
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[13/28] Lot v3 A 440hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 15
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.50mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 45.10mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[14/28] Oberlender A 410 - 415hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 16
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -19.91mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 32.09mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[15/28] Palanca
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 17
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  left:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  right:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  foot:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+
+📁 ARCHIVOS FALTANTES:
+  • Externos: headjoint, left, right, foot
+
+
+[16/28] Quantz Baudin v1
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 5
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[17/28] Quantz Baudin v2 A 395hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 6
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -20.24mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 54.06mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[18/28] Quantz v3 A 400hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 18
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -20.24mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 54.06mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[19/28] Quantz v4 A 405hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 19
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -20.24mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 54.06mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[20/28] Quantz v5 A 410hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 20
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -20.24mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 54.06mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[21/28] Quantz v6 A 415hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 21
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -20.24mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 54.06mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[22/28] Rottenbourg G.A
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 22
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -19.00mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 35.20mm.
+  • left: Parte 'left', medición 21: 'position' (188) excede 'Total length' (187.9).
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  left:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  right:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  foot:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+
+📁 ARCHIVOS FALTANTES:
+  • Externos: headjoint, left, right, foot
+
+
+[23/28] Rottenbourg G.A
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 22
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -19.00mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 35.20mm.
+  • left: Parte 'left', medición 21: 'position' (188) excede 'Total length' (187.9).
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  left:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  right:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+  foot:     ✓ Archivo interno     ✗ Archivo externo faltante     ⚠ Geometría externa: PARAMÉTRICA (generada)
+
+📁 ARCHIVOS FALTANTES:
+  • Externos: headjoint, left, right, foot
+
+
+[24/28] Stanesby
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 23
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[25/28] Villars
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 24
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[26/28] Wijne v1
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 25
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[27/28] Wijne v2 A 415hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 26
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -19.20mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 31.80mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+
+[28/28] Wijne v3 A 440hz
+--------------------------------------------------------------------------------
+Estado: ✓ Cargada exitosamente
+ID en BD: 27
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -19.20mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 31.80mm.
+
+📊 Notas calculadas: 7
+
+📦 ESTADO DE PARTES:
+  headjoint:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  left:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  right:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+  foot:     ✓ Archivo interno     ✓ Archivo externo (medido)     ✓ Geometría externa: MEDIDA
+
+================================================================================
+RESUMEN DE PROBLEMAS COMUNES
+================================================================================
+
+Flautas sin archivos externos medidos (5):
+  • Grenser
+  • Grenser-Weemaels
+  • Palanca
+  • Rottenbourg G.A
+  • Rottenbourg G.A
+
+Flautas usando geometría paramétrica (6):
+  • Grenser-Montero
+  • Grenser
+  • Grenser-Weemaels
+  • Palanca
+  • Rottenbourg G.A
+  • Rottenbourg G.A
