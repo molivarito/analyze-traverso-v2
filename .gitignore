@@ -172,3 +172,67 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# ============================================================================
+# Project-specific ignores for Traverso Analyzer
+# ============================================================================
+
+# Backup directories (should not be in version control)
+backup_*/
+*_backup/
+*.backup
+
+# Database files (generated at runtime)
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+flute_analysis.db*
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Temporary output files
+*.tmp
+*.temp
+*_temp.py
+*_tmp.py
+
+# Generated reports and exports
+Report/generated_*
+*.pdf
+!Freyer_planos.pdf
+!sensibilidad_Deppe_hole_undercut_3.pdf
+mi_reporte.txt
+reporte_flautas.txt
+*_reporte.txt
+
+# G-code output files
+*.gcode
+*.nc
+
+# 3D model cache (if generated)
+*.stl
+*.obj
+*.3dm
+
+# Notion temporary files
+.notion_cache/
+
+# Editor-specific files
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# Log files
+*.log
+
+# Temporary Python scripts (experimentation)
+# Note: test_*.py files in tests/ directory are NOT ignored
+scratch_*.py
+/test_*.py
+debug_*.py

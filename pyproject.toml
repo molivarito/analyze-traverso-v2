@@ -1,0 +1,217 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "traverso-analyzer"
+version = "2.0.0"
+description = "Acoustic analysis and design tool for traverso (baroque) flutes"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Traverso Analyzer Contributors"}
+]
+maintainers = [
+    {name = "Traverso Analyzer Contributors"}
+]
+keywords = [
+    "acoustics",
+    "flute",
+    "baroque",
+    "traverso",
+    "musical-instruments",
+    "analysis",
+    "OpenWind",
+    "impedance"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Education",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Multimedia :: Sound/Audio :: Analysis",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Operating System :: OS Independent",
+]
+
+dependencies = [
+    "numpy>=1.21.0,<2.0.0",
+    "scipy>=1.7.0,<2.0.0",
+    "matplotlib>=3.4.0,<4.0.0",
+    "PyQt5>=5.15.0,<6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "isort>=5.12.0",
+]
+
+notion = [
+    "notion-client>=2.0.0",
+    "requests>=2.28.0",
+]
+
+all = [
+    "traverso-analyzer[dev,notion]",
+]
+
+[project.urls]
+Homepage = "https://github.com/your-org/analyze-traverso-v2"
+Documentation = "https://github.com/your-org/analyze-traverso-v2/blob/main/README.md"
+Repository = "https://github.com/your-org/analyze-traverso-v2"
+"Bug Tracker" = "https://github.com/your-org/analyze-traverso-v2/issues"
+
+[project.scripts]
+traverso-gui = "unified_flute_gui_qt:main"
+traverso-experimenter = "flute_experimenter:main"
+traverso-optimizer = "flute_optimizer_gui:main"
+
+[tool.setuptools]
+packages = [
+    ".",
+]
+
+[tool.setuptools.package-data]
+"*" = ["*.txt", "*.md"]
+
+# ============================================================================
+# Tool Configurations
+# ============================================================================
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "gui: marks tests that require GUI (PyQt5)",
+    "openwind: marks tests that require OpenWind",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "tests/*",
+    "backup_*/*",
+    "venv/*",
+    "*/site-packages/*",
+    "setup.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | backup_.*
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+skip_glob = ["backup_*/*", "venv/*"]
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "W503"]
+exclude = [
+    ".git",
+    "__pycache__",
+    "backup_*",
+    "venv",
+    ".venv",
+    "build",
+    "dist",
+]
+per-file-ignores = [
+    "__init__.py:F401",
+]
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Gradually enable
+ignore_missing_imports = true
+exclude = [
+    "backup_.*",
+    "venv",
+    "build",
+]
+
+[[tool.mypy.overrides]]
+module = "openwind.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "PyQt5.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "matplotlib.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "scipy.*"
+ignore_missing_imports = true
+
+# ============================================================================
+# Additional Metadata
+# ============================================================================
+
+[tool.setuptools_scm]
+write_to = "version.py"

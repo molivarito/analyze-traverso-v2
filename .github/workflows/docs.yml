@@ -1,0 +1,49 @@
+name: Documentation Check
+
+on:
+  push:
+    branches: [ main, develop, claude/* ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Check for required documentation files
+      run: |
+        # Check that key documentation files exist
+        test -f README.md || (echo "README.md is missing" && exit 1)
+        test -f ARCHITECTURE.md || (echo "ARCHITECTURE.md is missing" && exit 1)
+        test -f CONTRIBUTING.md || (echo "CONTRIBUTING.md is missing" && exit 1)
+        test -f requirements.txt || (echo "requirements.txt is missing" && exit 1)
+        echo "✅ All required documentation files present"
+
+    - name: Check for common documentation issues
+      run: |
+        # Check for broken internal links (basic check)
+        echo "Checking for common markdown issues..."
+
+        # Check that code blocks are properly closed
+        for file in *.md; do
+          if [ -f "$file" ]; then
+            # Count backticks (should be even)
+            backtick_count=$(grep -o '```' "$file" | wc -l)
+            if [ $((backtick_count % 2)) -ne 0 ]; then
+              echo "⚠️  Warning: Unclosed code block in $file"
+            fi
+          fi
+        done
+
+        echo "✅ Documentation checks passed"
+
+    - name: Validate requirements.txt
+      run: |
+        # Check that requirements.txt is valid
+        python -m pip install --upgrade pip
+        pip install --dry-run -r requirements.txt || (echo "❌ requirements.txt has errors" && exit 1)
+        echo "✅ requirements.txt is valid"

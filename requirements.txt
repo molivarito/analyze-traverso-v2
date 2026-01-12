@@ -1,0 +1,28 @@
+# Traverso Analyzer - Dependencies
+# Core scientific computing
+numpy>=1.21.0,<2.0.0
+scipy>=1.7.0,<2.0.0
+matplotlib>=3.4.0,<4.0.0
+
+# OpenWind for acoustic analysis
+# Note: Install from source if not available via pip
+# See: https://gitlab.inria.fr/openwind/openwind
+openwind>=0.1.0
+
+# GUI frameworks
+PyQt5>=5.15.0,<6.0.0
+
+# Database and data handling
+# (sqlite3 is included in Python standard library)
+
+# Optional: Notion integration (for reports)
+notion-client>=2.0.0
+requests>=2.28.0
+
+# Development dependencies (optional)
+# Uncomment for development:
+# pytest>=7.0.0
+# pytest-cov>=4.0.0
+# black>=23.0.0
+# flake8>=6.0.0
+# mypy>=1.0.0
