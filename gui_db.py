@@ -3,6 +3,18 @@ GUI para análisis de flautas usando base de datos.
 
 Esta GUI es similar a gui.py pero usa FluteDataDB para cargar flautas
 desde la base de datos, evitando recálculos innecesarios.
+
+⚠️ DEPRECATION WARNING ⚠️
+
+This GUI module (gui_db.py) may be legacy code.
+
+**Recommended**: Use unified_flute_gui_qt.py which includes database functionality.
+
+**Status**: Under review - unified_flute_gui_qt.py has database features.
+See DEPRECATIONS.md for details.
+
+If this provides unique functionality not in unified_flute_gui_qt.py,
+please document it in the project issues.
 """
 
 import os
@@ -12,12 +24,21 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 from pathlib import Path
 from typing import Optional, List, Tuple, Dict
+import warnings
 
 from flute_data_db import FluteDataDB, FluteDataInitializationError
 from flute_operations import FluteOperations
 from constants import BASE_COLORS, LINESTYLES, FLUTE_PARTS_ORDER
 from flute_db_manager import FluteDBManager
 import logging
+
+# Issue deprecation warning
+warnings.warn(
+    "gui_db.py may be legacy code. unified_flute_gui_qt.py includes database features. "
+    "See DEPRECATIONS.md for details.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA_JSON_DIR = SCRIPT_DIR / "data_json"

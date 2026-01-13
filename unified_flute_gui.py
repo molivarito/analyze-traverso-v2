@@ -7,6 +7,18 @@ Integra todas las funcionalidades:
 - Análisis (inharmonicidad, MOC, B_I/ESPE)
 - Perturbación (variación de parámetros)
 - Modificación (editor de geometría)
+
+⚠️ DEPRECATION WARNING ⚠️
+
+This GUI module (unified_flute_gui.py) appears to be superseded.
+
+**Recommended**: Use unified_flute_gui_qt.py (PyQt5-based) instead.
+
+**Status**: Likely legacy - unified_flute_gui_qt.py is the current unified GUI.
+See DEPRECATIONS.md for details.
+
+This Tkinter-based version may be replaced by the PyQt5 version.
+If you need this specific version, please document why in the project issues.
 """
 
 import tkinter as tk
@@ -18,6 +30,15 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 import logging
 import numpy as np
+import warnings
+
+# Issue deprecation warning
+warnings.warn(
+    "unified_flute_gui.py (Tkinter) is likely superseded by unified_flute_gui_qt.py (PyQt5). "
+    "See DEPRECATIONS.md for details.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 from flute_data_db import FluteDataDB
 from flute_operations import FluteOperations

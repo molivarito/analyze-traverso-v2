@@ -1,3 +1,15 @@
+"""
+⚠️ DEPRECATION WARNING ⚠️
+
+This GUI module (gui.py) may be legacy code.
+
+**Recommended**: Use unified_flute_gui_qt.py for the main application interface.
+
+**Status**: Under review - see DEPRECATIONS.md for details.
+
+If you rely on this specific GUI, please document your use case in the project issues.
+"""
+
 import os
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
@@ -6,11 +18,20 @@ import matplotlib.pyplot as plt
 # from matplotlib.patches import Circle # Ya no se usa Circle para los agujeros en estos gráficos
 from pathlib import Path
 from typing import Optional, List, Tuple, Dict
+import warnings
 
 from flute_data import FluteData, FluteDataInitializationError # Asegúrate que FluteData se importa bien
 from flute_operations import FluteOperations
 from constants import BASE_COLORS, LINESTYLES, FLUTE_PARTS_ORDER
 import logging # <--- AÑADIR ESTA LÍNEA
+
+# Issue deprecation warning
+warnings.warn(
+    "gui.py may be legacy code. Consider using unified_flute_gui_qt.py instead. "
+    "See DEPRECATIONS.md for details.",
+    DeprecationWarning,
+    stacklevel=2
+)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_DATA_JSON_DIR = SCRIPT_DIR / "data_json"

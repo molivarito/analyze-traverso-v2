@@ -1,0 +1,93 @@
+# Pre-commit hooks for Traverso Analyzer
+# See https://pre-commit.com for more information
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: ^(backup_.*|.*\.md)$
+      - id: end-of-file-fixer
+        exclude: ^backup_.*$
+      - id: check-yaml
+      - id: check-json
+        exclude: ^(backup_.*|data_json/.*)$
+      - id: check-added-large-files
+        args: ['--maxkb=5000']  # 5MB limit
+      - id: check-case-conflict
+      - id: check-merge-conflict
+      - id: check-toml
+      - id: mixed-line-ending
+        args: ['--fix=lf']
+      - id: requirements-txt-fixer
+
+  # Python code formatting
+  - repo: https://github.com/psf/black
+    rev: 23.12.1
+    hooks:
+      - id: black
+        language_version: python3
+        exclude: ^backup_.*$
+        args: ['--line-length=100']
+
+  # Import sorting
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        exclude: ^backup_.*$
+        args: ['--profile', 'black', '--line-length', '100']
+
+  # Linting
+  - repo: https://github.com/pycqa/flake8
+    rev: 7.0.0
+    hooks:
+      - id: flake8
+        exclude: ^backup_.*$
+        args:
+          - '--max-line-length=100'
+          - '--extend-ignore=E203,W503'
+          - '--exclude=backup_*,venv,.venv,build,dist'
+
+  # Security checks
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.6
+    hooks:
+      - id: bandit
+        args: ['-c', 'pyproject.toml']
+        exclude: ^(backup_.*|tests/.*)$
+
+  # Type checking (optional - can be slow)
+  # Uncomment to enable mypy pre-commit hook
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.8.0
+  #   hooks:
+  #     - id: mypy
+  #       exclude: ^(backup_.*|tests/.*)$
+  #       additional_dependencies: [types-all]
+  #       args: ['--ignore-missing-imports']
+
+  # Markdown linting (optional)
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.38.0
+    hooks:
+      - id: markdownlint
+        args: ['--fix']
+        exclude: ^(backup_.*|CHANGELOG.md)$
+
+# Configuration
+default_language_version:
+  python: python3
+
+# Exclude patterns
+exclude: |
+  (?x)^(
+      backup_before_.*|
+      .*_backup/.*|
+      venv/.*|
+      \.venv/.*|
+      build/.*|
+      dist/.*|
+      .*\.egg-info/.*
+  )$
