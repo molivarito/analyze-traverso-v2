@@ -21,6 +21,7 @@ A comprehensive scientific tool for analyzing flute geometry, simulating acousti
 ### 📖 Quick Links
 
 - **[Installation Guide](INSTALL.md)** - Detailed setup instructions
+- **[Data Setup Guide](DATA_SETUP.md)** - Configure data paths and manage files
 - **[Architecture](ARCHITECTURE.md)** - System design and module overview
 - **[Contributing](CONTRIBUTING.md)** - Development guidelines
 - **[Deprecations](DEPRECATIONS.md)** - Legacy code status
@@ -120,6 +121,7 @@ Precise geometric modifications with detailed controls.
 |----------|-------------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture and design |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development guidelines |
+| [DATA_SETUP.md](DATA_SETUP.md) | Data path configuration and file management |
 | [DEPRECATIONS.md](DEPRECATIONS.md) | Legacy code status |
 | [INSTALL.md](INSTALL.md) | Installation instructions |
 | [SENSITIVITY_ANALYSIS_README.md](SENSITIVITY_ANALYSIS_README.md) | Sensitivity analysis guide |
@@ -175,6 +177,7 @@ MIT License - see LICENSE file for details.
 ### 📖 Enlaces Rápidos
 
 - **[Guía de Instalación](INSTALL.md)** - Instrucciones detalladas de configuración
+- **[Guía de Configuración de Datos](DATA_SETUP.md)** - Configurar rutas y gestionar archivos
 - **[Arquitectura](ARCHITECTURE.md)** - Diseño del sistema y módulos
 - **[Contribución](CONTRIBUTING.md)** - Guías de desarrollo
 - **[Deprecaciones](DEPRECATIONS.md)** - Estado del código legacy
@@ -274,6 +277,7 @@ Modificaciones geométricas precisas con controles detallados.
 |----------|-------------|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Arquitectura y diseño del sistema |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Guías de desarrollo |
+| [DATA_SETUP.md](DATA_SETUP.md) | Configuración de rutas y gestión de archivos |
 | [DEPRECATIONS.md](DEPRECATIONS.md) | Estado del código legacy |
 | [INSTALL.md](INSTALL.md) | Instrucciones de instalación |
 | [SENSITIVITY_ANALYSIS_README.md](SENSITIVITY_ANALYSIS_README.md) | Guía de análisis de sensibilidad |

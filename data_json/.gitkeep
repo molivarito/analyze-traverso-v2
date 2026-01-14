@@ -1,0 +1,2 @@
+# This file ensures the data_json directory structure is preserved in git
+# Actual data files should be configured per-user (see config.json.example)

@@ -12,6 +12,7 @@ Complete installation instructions for Traverso Analyzer on Linux, macOS, and Wi
   - [4. Install Dependencies](#4-install-dependencies)
   - [5. Install OpenWind](#5-install-openwind)
   - [6. Verify Installation](#6-verify-installation)
+  - [7. Configure Data Paths](#7-configure-data-paths)
 - [Platform-Specific Notes](#platform-specific-notes)
 - [Troubleshooting](#troubleshooting)
 - [Optional Components](#optional-components)
@@ -261,6 +262,128 @@ python unified_flute_gui_qt.py
 ```
 
 The main application window should open. If you see the GUI, **installation is complete!** 🎉
+
+### 7. Configure Data Paths
+
+After installation, you need to configure where your flute data and fingering chart files are located.
+
+#### Quick Setup
+
+1. **Create configuration file**:
+   ```bash
+   cp config.json.example config.json
+   ```
+
+2. **Edit `config.json`** with your data paths:
+   ```json
+   {
+     "data_dir": "~/traverso_data/data_json",
+     "db_path": "~/.flute_analysis/flute_analysis.db"
+   }
+   ```
+
+3. **Validate configuration**:
+   ```bash
+   python config.py --validate
+   ```
+
+   Expected output:
+   ```
+   ✓ Configuration is valid
+   ```
+
+#### For First-Time Users
+
+If you don't have flute data yet, see the sample data:
+```bash
+ls data_json/sample/
+```
+
+#### For Users with Existing Data
+
+If you already have flute data from a previous installation:
+
+**Option A: Configure paths** (Recommended)
+```bash
+# Edit config.json to point to your existing data location
+nano config.json
+```
+
+**Option B: Create symlink**
+```bash
+ln -s "/path/to/your/existing/data_json" ./data_json
+```
+
+**Option C: Copy database**
+```bash
+# If you have an existing database with cached results
+cp ~/.flute_analysis/flute_analysis.db ./
+```
+
+#### For Conda Users ⭐
+
+If you installed using conda (e.g., environment named `OpenWind`):
+
+1. **Activate your conda environment first**:
+   ```bash
+   conda activate OpenWind
+   ```
+
+2. **Then configure data paths** as above
+
+3. **Always activate environment before running**:
+   ```bash
+   conda activate OpenWind
+   python unified_flute_gui_qt.py
+   ```
+
+#### Configuration Strategies
+
+Choose the approach that works best for you:
+
+| Strategy | Best For | Setup |
+|----------|----------|-------|
+| **config.json file** | Most users, cloud storage | Create config.json with paths |
+| **Symbolic links** | Local data, simple setup | `ln -s /path/to/data ./data_json` |
+| **Environment variables** | Developers, multiple configs | Export TRAVERSO_DATA_DIR |
+| **Local copy** | Offline work, presentations | Copy data to project directory |
+
+#### Required Files
+
+Your data directory must contain:
+
+1. **Flute geometry JSON files** (e.g., `Deppe.json`, `Grenser.json`)
+2. **Fingering chart**: `traverso_fingerchart.txt` (required for OpenWind calculations)
+
+Example structure:
+```
+data_json/
+├── traverso_fingerchart.txt   # Required
+├── Deppe.json
+├── Grenser.json
+└── ...
+```
+
+#### Verify Data Configuration
+
+```bash
+# Print current configuration
+python config.py --print
+
+# Validate all paths exist
+python config.py --validate
+```
+
+#### Complete Guide
+
+For detailed information about data management, including:
+- Multiple configuration strategies
+- Database management
+- Troubleshooting data issues
+- Best practices for cloud storage
+- Collaboration setup
+
+See **[DATA_SETUP.md](DATA_SETUP.md)** - Complete data configuration guide
 
 ---
 

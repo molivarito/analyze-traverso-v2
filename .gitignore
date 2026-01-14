@@ -236,3 +236,22 @@ reporte_flautas.txt
 scratch_*.py
 /test_*.py
 debug_*.py
+
+# ============================================================================
+# Data files and configuration
+# ============================================================================
+
+# User-specific configuration (each user should create their own)
+/config.json
+
+# Large data directories (user should configure their own path)
+# Users typically store this in Google Drive or external location
+# Ignore data files but keep documentation and sample data
+data_json/*
+!data_json/.gitkeep
+!data_json/README.md
+!data_json/sample/
+
+# User-specific database location
+# Note: Database files are already ignored by *.db pattern above
+# Users can keep database in ~/.flute_analysis/ or configure custom path

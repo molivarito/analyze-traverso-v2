@@ -1,0 +1,30 @@
+# Sample Traverso Fingering Chart
+# Format: Note | Hole1 Hole2 Hole3 Hole4 Hole5 Hole6 (0=closed, 1=open)
+#
+# This is a simplified example for testing purposes
+# Your actual fingering chart should contain the complete set of fingerings
+# used for your acoustic analysis
+#
+# Note: OpenWind uses this file to determine which holes are open/closed
+# for each note when calculating impedance and admittance
+
+# Basic scale (example fingerings)
+D  | 0 0 0 0 0 0
+D# | 0 0 0 0 0 1
+E  | 0 0 0 0 1 1
+F  | 0 0 0 1 1 1
+F# | 0 0 1 0 1 1
+G  | 0 0 1 1 1 1
+G# | 0 1 1 1 1 1
+A  | 1 1 1 1 1 1
+
+# Second octave (partial example)
+D2 | 0 0 0 0 0 0
+E2 | 0 0 0 0 1 1
+A2 | 1 1 1 1 1 1
+
+# Notes:
+# - Actual fingering charts are instrument-specific
+# - May include cross-fingerings, half-holing, etc.
+# - Consult baroque flute fingering references for complete charts
+# - This example is NOT suitable for actual acoustic analysis

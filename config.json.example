@@ -1,0 +1,59 @@
+{
+  "_comment": "Copy this file to config.json and customize paths for your system",
+  "_instructions": [
+    "This is a template configuration file for Traverso Analyzer",
+    "To use it:",
+    "  1. Copy this file: cp config.json.example config.json",
+    "  2. Edit config.json with your actual paths",
+    "  3. Run: python config.py --validate to check your configuration"
+  ],
+
+  "data_dir": "~/traverso_data/data_json",
+  "_data_dir_comment": "Path to directory containing flute geometry JSON files and fingering charts. Use ~ for home directory. Common locations: ~/traverso_data/data_json, ~/Google Drive/path/to/data_json, or ./data_json for local copy",
+
+  "db_path": "~/.flute_analysis/flute_analysis.db",
+  "_db_path_comment": "Path to SQLite database file for caching analysis results. Default ~/.flute_analysis/flute_analysis.db works well for single-user. Use ./flute_analysis.db for project-local database",
+
+  "fingering_chart": "~/traverso_data/data_json/traverso_fingerchart.txt",
+  "_fingering_chart_comment": "Path to fingering chart file (usually inside data_dir). If not specified, will look for traverso_fingerchart.txt inside data_dir",
+
+  "_alternative_configurations": {
+    "_comment": "Examples of different configuration strategies",
+
+    "local_data": {
+      "description": "All data in project directory",
+      "data_dir": "./data_json",
+      "db_path": "./flute_analysis.db",
+      "fingering_chart": "./data_json/traverso_fingerchart.txt"
+    },
+
+    "google_drive_macos": {
+      "description": "Data in Google Drive (macOS)",
+      "data_dir": "~/Library/CloudStorage/GoogleDrive-your-email@gmail.com/My Drive/path/to/data_json",
+      "db_path": "~/.flute_analysis/flute_analysis.db",
+      "fingering_chart": "~/Library/CloudStorage/GoogleDrive-your-email@gmail.com/My Drive/path/to/data_json/traverso_fingerchart.txt"
+    },
+
+    "google_drive_linux": {
+      "description": "Data in Google Drive (Linux with google-drive-ocamlfuse)",
+      "data_dir": "~/GoogleDrive/path/to/data_json",
+      "db_path": "~/.flute_analysis/flute_analysis.db"
+    },
+
+    "shared_network": {
+      "description": "Data on network share",
+      "data_dir": "/mnt/lab_data/traverso/data_json",
+      "db_path": "~/.flute_analysis/flute_analysis.db"
+    }
+  },
+
+  "_environment_variables": {
+    "_comment": "You can also configure paths using environment variables (highest priority)",
+    "_description": [
+      "Set these in your shell profile (~/.bashrc, ~/.zshrc, etc.):",
+      "  export TRAVERSO_DATA_DIR=~/traverso_data/data_json",
+      "  export TRAVERSO_DB_PATH=~/.flute_analysis/flute_analysis.db",
+      "  export TRAVERSO_FINGERING_CHART=~/traverso_data/data_json/traverso_fingerchart.txt"
+    ]
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "_comment": "Minimal example flute geometry for testing and documentation",
+  "_description": "This is a simplified flute structure showing the required format",
+
+  "flute_model": "Example_Test_Flute",
+
+  "headjoint": {
+    "measurements": [
+      {"position": 0.0, "diameter": 19.0},
+      {"position": 50.0, "diameter": 19.2},
+      {"position": 100.0, "diameter": 19.5}
+    ],
+    "holes": [
+      {
+        "position": 75.0,
+        "diameter": 10.0,
+        "height": 2.5,
+        "angle": 0.0
+      }
+    ],
+    "length": 100.0,
+    "inner_diameter_at_tenon": 19.5,
+    "outer_diameter_at_tenon": 21.0
+  },
+
+  "left": {
+    "measurements": [
+      {"position": 0.0, "diameter": 19.5},
+      {"position": 50.0, "diameter": 19.3},
+      {"position": 100.0, "diameter": 19.1}
+    ],
+    "holes": [
+      {
+        "position": 30.0,
+        "diameter": 8.0,
+        "height": 2.0,
+        "angle": 0.0
+      },
+      {
+        "position": 60.0,
+        "diameter": 8.0,
+        "height": 2.0,
+        "angle": 0.0
+      }
+    ],
+    "length": 100.0,
+    "inner_diameter_at_tenon": 19.1,
+    "outer_diameter_at_tenon": 21.0
+  },
+
+  "right": {
+    "measurements": [
+      {"position": 0.0, "diameter": 19.1},
+      {"position": 80.0, "diameter": 18.5}
+    ],
+    "holes": [
+      {
+        "position": 20.0,
+        "diameter": 7.5,
+        "height": 2.0,
+        "angle": 0.0
+      },
+      {
+        "position": 50.0,
+        "diameter": 7.5,
+        "height": 2.0,
+        "angle": 0.0
+      }
+    ],
+    "length": 80.0,
+    "inner_diameter_at_tenon": 18.5,
+    "outer_diameter_at_tenon": 20.5
+  },
+
+  "foot": {
+    "measurements": [
+      {"position": 0.0, "diameter": 18.5},
+      {"position": 50.0, "diameter": 17.5},
+      {"position": 100.0, "diameter": 16.0}
+    ],
+    "holes": [
+      {
+        "position": 70.0,
+        "diameter": 7.0,
+        "height": 2.0,
+        "angle": 0.0
+      }
+    ],
+    "length": 100.0
+  },
+
+  "_data_format_notes": {
+    "measurements": "List of {position (mm), diameter (mm)} along bore axis",
+    "holes": "List of {position (mm), diameter (mm), height (mm chimney), angle (degrees)}",
+    "length": "Total length of this part in mm",
+    "inner_diameter_at_tenon": "Inner diameter at joint (mm) - for connecting parts",
+    "outer_diameter_at_tenon": "Outer diameter at joint (mm) - for connecting parts"
+  }
+}
