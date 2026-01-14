@@ -20,20 +20,39 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+# Importar sistema de configuración
+try:
+    from config import get_config
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+
 # Default fingering chart path logic
 SCRIPT_DIR_FLUTE_DATA = Path(__file__).resolve().parent
-# Try to find data_json relative to this script's parent, or directly if that fails
-DEFAULT_FING_CHART_RELATIVE_PATH = Path("data_json") / "traverso_fingerchart.txt"
-DEFAULT_FING_CHART_PATH_OPTION1 = SCRIPT_DIR_FLUTE_DATA.parent / DEFAULT_FING_CHART_RELATIVE_PATH
-DEFAULT_FING_CHART_PATH_OPTION2 = SCRIPT_DIR_FLUTE_DATA / DEFAULT_FING_CHART_RELATIVE_PATH # If constants.py is not in same dir
-DEFAULT_FING_CHART_PATH_OPTION3 = DEFAULT_FING_CHART_RELATIVE_PATH # Current working directory
 
-if DEFAULT_FING_CHART_PATH_OPTION1.exists():
-    DEFAULT_FING_CHART_PATH = str(DEFAULT_FING_CHART_PATH_OPTION1)
-elif DEFAULT_FING_CHART_PATH_OPTION2.exists():
-    DEFAULT_FING_CHART_PATH = str(DEFAULT_FING_CHART_PATH_OPTION2)
-else:
-    DEFAULT_FING_CHART_PATH = str(DEFAULT_FING_CHART_PATH_OPTION3)
+# Primero intentar usar el sistema de configuración
+if CONFIG_AVAILABLE:
+    try:
+        DEFAULT_FING_CHART_PATH = str(get_config().fingering_chart_path)
+        logger.info(f"Usando fingering chart desde configuración: {DEFAULT_FING_CHART_PATH}")
+    except Exception as e:
+        logger.warning(f"No se pudo cargar configuración, buscando en rutas por defecto: {e}")
+        CONFIG_AVAILABLE = False
+
+# Si no hay configuración, usar la lógica de búsqueda anterior
+if not CONFIG_AVAILABLE:
+    # Try to find data_json relative to this script's parent, or directly if that fails
+    DEFAULT_FING_CHART_RELATIVE_PATH = Path("data_json") / "traverso_fingerchart.txt"
+    DEFAULT_FING_CHART_PATH_OPTION1 = SCRIPT_DIR_FLUTE_DATA.parent / DEFAULT_FING_CHART_RELATIVE_PATH
+    DEFAULT_FING_CHART_PATH_OPTION2 = SCRIPT_DIR_FLUTE_DATA / DEFAULT_FING_CHART_RELATIVE_PATH # If constants.py is not in same dir
+    DEFAULT_FING_CHART_PATH_OPTION3 = DEFAULT_FING_CHART_RELATIVE_PATH # Current working directory
+
+    if DEFAULT_FING_CHART_PATH_OPTION1.exists():
+        DEFAULT_FING_CHART_PATH = str(DEFAULT_FING_CHART_PATH_OPTION1)
+    elif DEFAULT_FING_CHART_PATH_OPTION2.exists():
+        DEFAULT_FING_CHART_PATH = str(DEFAULT_FING_CHART_PATH_OPTION2)
+    else:
+        DEFAULT_FING_CHART_PATH = str(DEFAULT_FING_CHART_PATH_OPTION3)
 
 class FluteDataInitializationError(ValueError):
     """Custom exception for errors during FluteData initialization, after initial JSON parsing."""

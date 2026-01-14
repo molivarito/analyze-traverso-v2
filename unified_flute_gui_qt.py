@@ -126,6 +126,15 @@ from plot_updater import PlotUpdater
 from gui_constants import *
 from default_config import *
 
+# Importar sistema de configuración
+try:
+    from config import get_config
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    logger_temp = logging.getLogger(__name__)
+    logger_temp.warning("config.py no disponible, usando rutas por defecto")
+
 # Configuración de logging
 logging.basicConfig(
     level=logging.INFO,
@@ -134,7 +143,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-DEFAULT_DATA_JSON_DIR = SCRIPT_DIR.parent / "data_json"
+# Usar sistema de configuración si está disponible, sino fallback a ruta relativa
+if CONFIG_AVAILABLE:
+    try:
+        DEFAULT_DATA_JSON_DIR = get_config().data_dir
+        logger.info(f"Usando data_dir desde configuración: {DEFAULT_DATA_JSON_DIR}")
+    except Exception as e:
+        logger.warning(f"Error cargando configuración, usando ruta por defecto: {e}")
+        DEFAULT_DATA_JSON_DIR = SCRIPT_DIR / "data_json"
+else:
+    DEFAULT_DATA_JSON_DIR = SCRIPT_DIR / "data_json"
 
 
 # ==================== Utilidades de Corrección de Archivos ====================

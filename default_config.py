@@ -4,6 +4,15 @@ Valores que pueden ser modificados por el usuario a través de la GUI.
 """
 
 from pathlib import Path
+import logging
+
+# Importar sistema de configuración
+try:
+    from config import get_config
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    logging.warning("config.py no disponible, usando rutas por defecto")
 
 # ==================== PARÁMETROS ACÚSTICOS ====================
 
@@ -51,12 +60,24 @@ DEFAULT_TEMPERATURE_MODEL = "Webster-Lokshin"
 # Directorio base del script
 SCRIPT_DIR = Path(__file__).resolve().parent
 
-# Directorio de datos JSON (por defecto)
-DEFAULT_DATA_JSON_DIR = SCRIPT_DIR.parent / "data_json"
+# Directorio de datos JSON (usar sistema de configuración si está disponible)
+if CONFIG_AVAILABLE:
+    try:
+        DEFAULT_DATA_JSON_DIR = get_config().data_dir
+    except Exception:
+        DEFAULT_DATA_JSON_DIR = SCRIPT_DIR / "data_json"
+else:
+    DEFAULT_DATA_JSON_DIR = SCRIPT_DIR / "data_json"
 
-# Base de datos
+# Base de datos (usar sistema de configuración si está disponible)
 DEFAULT_DB_NAME = "flute_analysis.db"
-DEFAULT_DB_PATH = SCRIPT_DIR / DEFAULT_DB_NAME
+if CONFIG_AVAILABLE:
+    try:
+        DEFAULT_DB_PATH = get_config().db_path
+    except Exception:
+        DEFAULT_DB_PATH = SCRIPT_DIR / DEFAULT_DB_NAME
+else:
+    DEFAULT_DB_PATH = SCRIPT_DIR / DEFAULT_DB_NAME
 
 # Directorio para exports
 DEFAULT_EXPORT_DIR = SCRIPT_DIR / "exports"
@@ -77,7 +98,13 @@ CANONICAL_NOTE_ORDER = [
 
 # Archivo de digitación por defecto
 DEFAULT_FINGERCHART_FILENAME = "traverso_fingerchart.txt"
-DEFAULT_FING_CHART_PATH = SCRIPT_DIR / DEFAULT_FINGERCHART_FILENAME
+if CONFIG_AVAILABLE:
+    try:
+        DEFAULT_FING_CHART_PATH = get_config().fingering_chart_path
+    except Exception:
+        DEFAULT_FING_CHART_PATH = SCRIPT_DIR / DEFAULT_FINGERCHART_FILENAME
+else:
+    DEFAULT_FING_CHART_PATH = SCRIPT_DIR / DEFAULT_FINGERCHART_FILENAME
 
 # Notas mínimas esperadas para análisis completo
 MINIMUM_NOTES_FOR_ANALYSIS = ["D", "E", "Fs", "G", "A", "B", "Cs"]

@@ -60,9 +60,24 @@ except ImportError:
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s [%(name)s:%(funcName)s:%(lineno)d] - %(message)s')
 logger = logging.getLogger(__name__)
 
+# Importar sistema de configuración
+try:
+    from config import get_config
+    CONFIG_AVAILABLE = True
+except ImportError:
+    CONFIG_AVAILABLE = False
+    logger.warning("config.py no disponible, usando rutas por defecto")
+
 SCRIPT_DIR = Path(__file__).resolve().parent
-DEFAULT_DATA_JSON_DIR = SCRIPT_DIR.parent / "data_json"
-if not DEFAULT_DATA_JSON_DIR.exists():
+# Usar sistema de configuración si está disponible
+if CONFIG_AVAILABLE:
+    try:
+        DEFAULT_DATA_JSON_DIR = get_config().data_dir
+        logger.info(f"Usando data_dir desde configuración: {DEFAULT_DATA_JSON_DIR}")
+    except Exception as e:
+        logger.warning(f"Error cargando configuración: {e}")
+        DEFAULT_DATA_JSON_DIR = SCRIPT_DIR / "data_json"
+else:
     DEFAULT_DATA_JSON_DIR = SCRIPT_DIR / "data_json"
 
 
