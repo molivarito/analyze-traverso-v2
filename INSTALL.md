@@ -98,7 +98,29 @@ cd analyze-traverso-v2
 
 Using a virtual environment is **strongly recommended** to avoid dependency conflicts.
 
-#### Linux/macOS:
+#### Option A: Using Conda (Recommended if you have Anaconda/Miniconda) ⭐
+
+```bash
+# Create conda environment
+conda create -n OpenWind python=3.10
+
+# Activate environment
+conda activate OpenWind
+
+# Your prompt should now show (OpenWind)
+```
+
+**If you already have a conda environment called `OpenWind`** (like the project author):
+```bash
+# Just activate it
+conda activate OpenWind
+
+# Proceed to install dependencies
+```
+
+#### Option B: Using venv (Standard Python)
+
+**Linux/macOS**:
 ```bash
 # Create virtual environment
 python3 -m venv venv
@@ -109,7 +131,7 @@ source venv/bin/activate
 # Your prompt should now show (venv)
 ```
 
-#### Windows:
+**Windows**:
 ```cmd
 REM Create virtual environment
 python -m venv venv
@@ -120,7 +142,7 @@ venv\Scripts\activate
 REM Your prompt should now show (venv)
 ```
 
-**Verification**: After activation, `which python` (or `where python` on Windows) should point to the venv directory.
+**Verification**: After activation, `which python` (or `where python` on Windows) should point to the environment directory.
 
 ### 4. Install Dependencies
 
