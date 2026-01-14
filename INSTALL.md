@@ -269,6 +269,24 @@ After installation, you need to configure where your flute data and fingering ch
 
 #### Quick Setup
 
+**Option A: Automatic Setup (Recommended)** 🚀
+
+```bash
+# For macOS users with Google Drive (pre-configured)
+python setup_config.py --pdelac
+
+# Or for interactive auto-detection
+python setup_config.py
+```
+
+The script will:
+- Auto-detect your system (macOS/Linux/Windows)
+- Try to find Google Drive location
+- Search for data_json directory
+- Create config.json automatically
+
+**Option B: Manual Setup**
+
 1. **Create configuration file**:
    ```bash
    cp config.json.example config.json
