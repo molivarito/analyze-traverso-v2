@@ -1,6 +1,22 @@
 """
-GUI Unificada para Análisis de Flautas - Versión PyQt5
-Integra visualización, análisis, planos de ingeniería y modelado 3D profesional.
+GUI unificada para análisis y diseño de flautas (PyQt5).
+
+Estructura general:
+- Pestañas principales:
+  - Geometría y perfiles (2D/3D) de la flauta.
+  - Análisis acústico (impedancias, métricas derivadas, comparaciones).
+  - Planos de ingeniería y generación de G-code.
+  - Herramientas de base de datos (poblado, limpieza, estadísticas).
+  - Análisis de sensibilidad (variación de parámetros) integrado.
+- Integración con editores:
+  - `FluteGeometryEditor` para edición de geometría por partes.
+  - Lanzadores de diálogos especializados (p.ej. análisis de sensibilidad).
+
+Este archivo contiene principalmente:
+- La ventana principal (`MainWindow`) con la construcción de la GUI.
+- Gestión de base de datos y carga/selección de flautas.
+- Conexiones con `FluteOperations`, `FluteAnalyzer` y los módulos de reportes.
+- Menús de reportes estadísticos y herramientas auxiliares de mantenimiento.
 """
 
 import sys
@@ -9,8 +25,9 @@ import json
 import logging
 import tempfile
 import signal
+import sqlite3
 from pathlib import Path
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Any
 import difflib
 from collections import defaultdict
 from datetime import datetime
@@ -29,7 +46,7 @@ from PyQt5.QtWidgets import (
     QListWidget, QListWidgetItem
 )
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon
 
 try:
     from pyvistaqt import QtInteractor
@@ -125,6 +142,8 @@ from flute_geometry_editor_qt import FluteGeometryEditor
 from plot_updater import PlotUpdater
 from gui_constants import *
 from default_config import *
+from resonator_truncation_analysis import ResonatorTruncationAnalyzer
+from flute_plan_viewer import FlutePlanViewer
 
 # Configuración de logging
 logging.basicConfig(
@@ -831,6 +850,7 @@ class UnifiedFluteGUI_Qt(QMainWindow):
             self.flute_ops_list: List[FluteOperations] = []
             self.analyzer: Optional[FluteAnalyzer] = None
             self.flutes_3d_data: Dict = {}  # Para visualización 3D
+            self.flute_plans: Dict[str, Dict[str, Any]] = {}  # {flute_model: plans_dict}
             
             # Inicializar PlotUpdater (se crea después de configurar la GUI)
             self.plot_updater: Optional[PlotUpdater] = None
@@ -895,7 +915,7 @@ class UnifiedFluteGUI_Qt(QMainWindow):
             splitter.addWidget(left_panel)
             
             logger.info("Creando tabs...")
-            # Panel derecho: Tabs
+            # Panel derecho: Tabs (todas en un solo QTabWidget)
             self.tabs = QTabWidget()
             self._create_tabs()
             splitter.addWidget(self.tabs)
@@ -940,6 +960,9 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         optimize_action.triggered.connect(self._optimize_database)
         delete_action = maintenance_menu.addAction("Eliminar Flauta...")
         delete_action.triggered.connect(self._delete_flute_from_db)
+        # Agregar acción de corregir archivos
+        fix_files_action = maintenance_menu.addAction("Corregir Archivos JSON...")
+        fix_files_action.triggered.connect(self._check_and_fix_files)
         
         # Estadísticas
         stats_action = db_menu.addAction("Ver Estadísticas de BD")
@@ -955,6 +978,8 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         """Crea la barra superior con botones principales."""
         top_bar = QWidget()
         layout = QHBoxLayout(top_bar)
+        layout.setSpacing(10)
+        layout.setContentsMargins(10, 5, 10, 5)
         
         title_label = QLabel("Análisis y Visualización de Flautas Traverso")
         title_font = QFont()
@@ -972,40 +997,170 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         load_font = QFont()
         load_font.setBold(True)
         load_btn.setFont(load_font)
+        load_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 11pt;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
         layout.addWidget(load_btn)
         
         # Botón secundario de cambio de directorio (más compacto)
         self.change_dir_btn = QPushButton("📂")
         self.change_dir_btn.setToolTip(f"Cambiar directorio\nActual: {self.data_dir}")
         self.change_dir_btn.clicked.connect(self._change_directory)
-        self.change_dir_btn.setMaximumWidth(40)
+        self.change_dir_btn.setFixedSize(40, 35)
+        self.change_dir_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2196F3;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 14pt;
+            }
+            QPushButton:hover {
+                background-color: #0b7dda;
+            }
+            QPushButton:pressed {
+                background-color: #0a6bc2;
+            }
+        """)
         layout.addWidget(self.change_dir_btn)
         
-        # Label del directorio actual (compacto)
-        dir_display = self.data_dir if len(self.data_dir) <= 40 else f"...{self.data_dir[-37:]}"
-        self.dir_label = QLabel(dir_display)
-        self.dir_label.setStyleSheet("font-size: 9pt; color: gray; padding: 0 5px;")
-        self.dir_label.setToolTip(self.data_dir)
-        layout.addWidget(self.dir_label)
-        
-        # Botón de corrección de archivos
-        fix_btn = QPushButton("🔧 Corregir Archivos")
-        fix_btn.setToolTip("Escanea y corrige nombres de archivos JSON mal escritos")
-        fix_btn.clicked.connect(self._check_and_fix_files)
-        layout.addWidget(fix_btn)
+        # Label de flautas cargadas (en lugar del directorio)
+        self.loaded_flutes_label = QLabel("Flautas cargadas: Ninguna")
+        self.loaded_flutes_label.setStyleSheet("""
+            QLabel {
+                font-size: 10pt;
+                color: #333;
+                padding: 5px 10px;
+                background-color: #f5f5f5;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                min-width: 200px;
+            }
+        """)
+        self.loaded_flutes_label.setToolTip("Flautas actualmente cargadas en la aplicación")
+        layout.addWidget(self.loaded_flutes_label)
         
         # Botón de editar geometría
         edit_btn = QPushButton("✏️ Editar Geometría")
         edit_btn.setToolTip("Abre el editor interactivo de geometría de flautas")
         edit_btn.clicked.connect(self._open_geometry_editor)
+        edit_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #FF9800;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }
+            QPushButton:hover {
+                background-color: #e68900;
+            }
+            QPushButton:pressed {
+                background-color: #cc7700;
+            }
+        """)
         layout.addWidget(edit_btn)
         
         # Botón de salir
         exit_btn = QPushButton("Salir")
         exit_btn.clicked.connect(self.close)
+        exit_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #f44336;
+                color: white;
+                border: none;
+                padding: 8px 16px;
+                border-radius: 4px;
+                font-size: 10pt;
+            }
+            QPushButton:hover {
+                background-color: #da190b;
+            }
+            QPushButton:pressed {
+                background-color: #c1170a;
+            }
+        """)
         layout.addWidget(exit_btn)
         
         return top_bar
+    
+    def _update_loaded_flutes_label(self):
+        """Actualiza el label que muestra las flautas cargadas."""
+        if hasattr(self, 'loaded_flutes_label'):
+            num_flutes = len(self.flute_data_list)
+            if num_flutes == 0:
+                self.loaded_flutes_label.setText("Flautas cargadas: Ninguna")
+            elif num_flutes == 1:
+                flute_name = self.flute_data_list[0].flute_model
+                self.loaded_flutes_label.setText(f"Flautas cargadas: {flute_name}")
+            else:
+                flute_names = [f.flute_model for f in self.flute_data_list]
+                if len(", ".join(flute_names)) <= 60:
+                    self.loaded_flutes_label.setText(f"Flautas cargadas: {', '.join(flute_names)}")
+                else:
+                    # Mostrar solo las primeras y el total
+                    first_names = ", ".join(flute_names[:2])
+                    self.loaded_flutes_label.setText(f"Flautas cargadas: {first_names}... ({num_flutes} total)")
+    
+    def _update_plans_viewer(self):
+        """Actualiza el visualizador de planos con los planos de las flautas cargadas."""
+        if not hasattr(self, 'plan_viewer'):
+            return
+        
+        if not self.flute_data_list:
+            # No hay flautas cargadas, mostrar mensaje vacío
+            self.plan_viewer.set_plans({'all_plans': []})
+            return
+        
+        # Si hay una sola flauta, mostrar sus planos
+        if len(self.flute_data_list) == 1:
+            flute_model = self.flute_data_list[0].flute_model
+            plans = self.flute_plans.get(flute_model, {'all_plans': []})
+            self.plan_viewer.set_plans(plans)
+        else:
+            # Múltiples flautas: combinar todos los planos disponibles
+            all_plans_list = []
+            general_plan = None
+            part_plans_combined = {}
+            
+            for flute_data in self.flute_data_list:
+                flute_model = flute_data.flute_model
+                plans = self.flute_plans.get(flute_model, {'all_plans': []})
+                
+                # Agregar planos a la lista combinada
+                for plan_path in plans.get('all_plans', []):
+                    if plan_path not in all_plans_list:
+                        all_plans_list.append(plan_path)
+                
+                # Si no hay plano general aún, usar el primero encontrado
+                if not general_plan and plans.get('general_plan'):
+                    general_plan = plans['general_plan']
+                
+                # Combinar planos por parte
+                for part, part_plan in plans.get('part_plans', {}).items():
+                    if part not in part_plans_combined:
+                        part_plans_combined[part] = part_plan
+            
+            combined_plans = {
+                'general_plan': general_plan,
+                'part_plans': part_plans_combined,
+                'all_plans': all_plans_list
+            }
+            self.plan_viewer.set_plans(combined_plans)
     
     def _create_left_panel(self) -> QWidget:
         """Crea el panel izquierdo con controles compactos."""
@@ -1021,13 +1176,22 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         return panel
     
     def _create_tabs(self):
-        """Crea las pestañas principales."""
+        """Crea las pestañas principales. Orden: Análisis (izq) | Implementación (der)."""
         try:
+            # ========== PESTAÑAS DE ANÁLISIS (Izquierda) ==========
             logger.info("Creando tab 2D...")
             # Tab 1: Geometría
             self.tab_2d = QWidget()
             self._create_2d_tab()
             self.tabs.addTab(self.tab_2d, "Geometría")
+            
+            logger.info("Creando tab Planos...")
+            # Tab Planos: Visualización de planos/diagramas
+            self.tab_plans = QWidget()
+            self.tab_plans_layout = QVBoxLayout(self.tab_plans)
+            self.plan_viewer = FlutePlanViewer()
+            self.tab_plans_layout.addWidget(self.plan_viewer)
+            self.tabs.addTab(self.tab_plans, "📐 Planos")
             
             logger.info("Creando tab Admitancia...")
             # Tab 2: Admitancia
@@ -1041,6 +1205,7 @@ class UnifiedFluteGUI_Qt(QMainWindow):
             self._create_analysis_tab()
             self.tabs.addTab(self.tab_analysis, "Análisis Acústico")
             
+            # ========== PESTAÑAS DE IMPLEMENTACIÓN (Derecha) ==========
             logger.info("Creando tab 3D...")
             # Tab 4: Visualización 3D
             self.tab_3d = QWidget()
@@ -1051,7 +1216,7 @@ class UnifiedFluteGUI_Qt(QMainWindow):
             # Tab 5: Planos de Ingeniería
             self.tab_drawings = QWidget()
             self._create_drawings_tab()
-            self.tabs.addTab(self.tab_drawings, "Planos de Ingeniería")
+            self.tabs.addTab(self.tab_drawings, "Planos de Geometría")
             
             logger.info("Creando tab G-code...")
             # Tab 6: Generación G-code
@@ -1222,6 +1387,15 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         summary_widget = QWidget()
         summary_layout = QVBoxLayout(summary_widget)
         
+        # Botón de información
+        summary_info_layout = QHBoxLayout()
+        summary_info_layout.addStretch()
+        summary_info_btn = QPushButton("ℹ️ Información")
+        summary_info_btn.setMaximumWidth(120)
+        summary_info_btn.clicked.connect(lambda: self._show_graph_info("summary"))
+        summary_info_layout.addWidget(summary_info_btn)
+        summary_layout.addLayout(summary_info_layout)
+        
         # Scroll area para el resumen
         summary_scroll = QScrollArea()
         summary_scroll.setWidgetResizable(True)
@@ -1255,6 +1429,16 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         # 3. Frecuencias de Resonancia
         resonance_widget = QWidget()
         resonance_layout = QVBoxLayout(resonance_widget)
+        
+        # Botón de información
+        resonance_info_layout = QHBoxLayout()
+        resonance_info_layout.addStretch()
+        resonance_info_btn = QPushButton("ℹ️ Información")
+        resonance_info_btn.setMaximumWidth(120)
+        resonance_info_btn.clicked.connect(lambda: self._show_graph_info("resonance"))
+        resonance_info_layout.addWidget(resonance_info_btn)
+        resonance_layout.addLayout(resonance_info_layout)
+        
         self.resonance_figure = Figure(figsize=(10, 6))
         self.resonance_canvas = FigureCanvas(self.resonance_figure)
         resonance_layout.addWidget(self.resonance_canvas)
@@ -1263,6 +1447,16 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         # 4. MOC
         moc_widget = QWidget()
         moc_layout = QVBoxLayout(moc_widget)
+        
+        # Botón de información
+        moc_info_layout = QHBoxLayout()
+        moc_info_layout.addStretch()
+        moc_info_btn = QPushButton("ℹ️ Información")
+        moc_info_btn.setMaximumWidth(120)
+        moc_info_btn.clicked.connect(lambda: self._show_graph_info("moc"))
+        moc_info_layout.addWidget(moc_info_btn)
+        moc_layout.addLayout(moc_info_layout)
+        
         self.moc_figure = Figure(figsize=(10, 6))
         self.moc_canvas = FigureCanvas(self.moc_figure)
         moc_layout.addWidget(self.moc_canvas)
@@ -1271,6 +1465,16 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         # 5. B_I y ESPE
         bi_widget = QWidget()
         bi_layout = QVBoxLayout(bi_widget)
+        
+        # Botón de información
+        bi_info_layout = QHBoxLayout()
+        bi_info_layout.addStretch()
+        bi_info_btn = QPushButton("ℹ️ Información")
+        bi_info_btn.setMaximumWidth(120)
+        bi_info_btn.clicked.connect(lambda: self._show_graph_info("bi_espe"))
+        bi_info_layout.addWidget(bi_info_btn)
+        bi_layout.addLayout(bi_info_layout)
+        
         self.bi_figure = Figure(figsize=(10, 6))
         self.bi_canvas = FigureCanvas(self.bi_figure)
         bi_layout.addWidget(self.bi_canvas)
@@ -1279,6 +1483,16 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         # 6. Altura de Picos
         peak_widget = QWidget()
         peak_layout = QVBoxLayout(peak_widget)
+        
+        # Botón de información
+        peak_info_layout = QHBoxLayout()
+        peak_info_layout.addStretch()
+        peak_info_btn = QPushButton("ℹ️ Información")
+        peak_info_btn.setMaximumWidth(120)
+        peak_info_btn.clicked.connect(lambda: self._show_graph_info("peak_heights"))
+        peak_info_layout.addWidget(peak_info_btn)
+        peak_layout.addLayout(peak_info_layout)
+        
         self.peak_figure = Figure(figsize=(10, 6))
         self.peak_canvas = FigureCanvas(self.peak_figure)
         peak_layout.addWidget(self.peak_canvas)
@@ -1287,6 +1501,16 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         # 7. Q-Factor
         qfactor_widget = QWidget()
         qfactor_layout = QVBoxLayout(qfactor_widget)
+        
+        # Botón de información
+        qfactor_info_layout = QHBoxLayout()
+        qfactor_info_layout.addStretch()
+        qfactor_info_btn = QPushButton("ℹ️ Información")
+        qfactor_info_btn.setMaximumWidth(120)
+        qfactor_info_btn.clicked.connect(lambda: self._show_graph_info("q_factor"))
+        qfactor_info_layout.addWidget(qfactor_info_btn)
+        qfactor_layout.addLayout(qfactor_info_layout)
+        
         self.qfactor_figure = Figure(figsize=(10, 6))
         self.qfactor_canvas = FigureCanvas(self.qfactor_figure)
         qfactor_layout.addWidget(self.qfactor_canvas)
@@ -1295,6 +1519,16 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         # 8. Características Tonales (Ratios + Fase)
         tonal_widget = QWidget()
         tonal_layout = QVBoxLayout(tonal_widget)
+        
+        # Botón de información
+        tonal_info_layout = QHBoxLayout()
+        tonal_info_layout.addStretch()
+        tonal_info_btn = QPushButton("ℹ️ Información")
+        tonal_info_btn.setMaximumWidth(120)
+        tonal_info_btn.clicked.connect(lambda: self._show_graph_info("tonal"))
+        tonal_info_layout.addWidget(tonal_info_btn)
+        tonal_layout.addLayout(tonal_info_layout)
+        
         self.tonal_figure = Figure(figsize=(12, 10))
         self.tonal_canvas = FigureCanvas(self.tonal_figure)
         tonal_layout.addWidget(self.tonal_canvas)
@@ -1303,10 +1537,117 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         # 9. Estabilidad (Pitch + Cut-off)
         stability_widget = QWidget()
         stability_layout = QVBoxLayout(stability_widget)
+        
+        # Botón de información
+        stability_info_layout = QHBoxLayout()
+        stability_info_layout.addStretch()
+        stability_info_btn = QPushButton("ℹ️ Información")
+        stability_info_btn.setMaximumWidth(120)
+        stability_info_btn.clicked.connect(lambda: self._show_graph_info("stability"))
+        stability_info_layout.addWidget(stability_info_btn)
+        stability_layout.addLayout(stability_info_layout)
+        
         self.stability_figure = Figure(figsize=(12, 10))
         self.stability_canvas = FigureCanvas(self.stability_figure)
         stability_layout.addWidget(self.stability_canvas)
         sub_tabs.addTab(stability_widget, "Estabilidad")
+        
+        # 10. Resonador Truncado
+        resonator_widget = QWidget()
+        resonator_layout = QVBoxLayout(resonator_widget)
+        
+        # Controles para el análisis de resonador truncado
+        resonator_controls = QGroupBox("Configuración del Análisis")
+        resonator_controls_layout = QFormLayout(resonator_controls)
+        
+        # Porcentajes de truncamiento
+        self.resonator_percentages_edit = QLineEdit("100,95,90,85,80,75,70,65,60,55,50,45,40,35,30,25,20")
+        self.resonator_percentages_edit.setToolTip("Porcentajes de longitud a analizar (separados por comas)")
+        resonator_controls_layout.addRow("Porcentajes:", self.resonator_percentages_edit)
+        
+        # Incluir embocadura
+        self.resonator_include_embouchure = QCheckBox()
+        self.resonator_include_embouchure.setChecked(True)
+        self.resonator_include_embouchure.setToolTip("Incluir la embocadura en el análisis")
+        resonator_controls_layout.addRow("Incluir Embocadura:", self.resonator_include_embouchure)
+        
+        # Botón para ejecutar análisis
+        self.resonator_analyze_btn = QPushButton("Ejecutar Análisis")
+        self.resonator_analyze_btn.clicked.connect(self._run_resonator_truncation_analysis)
+        resonator_controls_layout.addRow("", self.resonator_analyze_btn)
+        
+        resonator_layout.addWidget(resonator_controls)
+        
+        # Sub-tabs para diferentes visualizaciones del resonador truncado
+        resonator_sub_tabs = QTabWidget()
+        
+        # Frecuencias vs Longitud
+        freq_widget = QWidget()
+        freq_layout = QVBoxLayout(freq_widget)
+        self.resonator_freq_figure = Figure(figsize=(10, 6))
+        self.resonator_freq_canvas = FigureCanvas(self.resonator_freq_figure)
+        freq_layout.addWidget(self.resonator_freq_canvas)
+        resonator_sub_tabs.addTab(freq_widget, "Frecuencias vs Longitud")
+        
+        # Inharmonicidad vs Longitud
+        inharm_widget = QWidget()
+        inharm_layout = QVBoxLayout(inharm_widget)
+        
+        # Botón de información
+        inharm_info_layout = QHBoxLayout()
+        inharm_info_layout.addStretch()
+        inharm_info_btn = QPushButton("ℹ️ Información")
+        inharm_info_btn.setMaximumWidth(120)
+        inharm_info_btn.clicked.connect(lambda: self._show_graph_info("resonator_inharmonicity"))
+        inharm_info_layout.addWidget(inharm_info_btn)
+        inharm_layout.addLayout(inharm_info_layout)
+        
+        self.resonator_inharm_figure = Figure(figsize=(10, 6))
+        self.resonator_inharm_canvas = FigureCanvas(self.resonator_inharm_figure)
+        inharm_layout.addWidget(self.resonator_inharm_canvas)
+        resonator_sub_tabs.addTab(inharm_widget, "Inharmonicidad vs Longitud")
+        
+        # Relaciones Armónicas
+        harmonic_widget = QWidget()
+        harmonic_layout = QVBoxLayout(harmonic_widget)
+        
+        # Botón de información
+        harmonic_info_layout = QHBoxLayout()
+        harmonic_info_layout.addStretch()
+        harmonic_info_btn = QPushButton("ℹ️ Información")
+        harmonic_info_btn.setMaximumWidth(120)
+        harmonic_info_btn.clicked.connect(lambda: self._show_graph_info("resonator_harmonic_ratios"))
+        harmonic_info_layout.addWidget(harmonic_info_btn)
+        harmonic_layout.addLayout(harmonic_info_layout)
+        
+        self.resonator_harmonic_figure = Figure(figsize=(10, 6))
+        self.resonator_harmonic_canvas = FigureCanvas(self.resonator_harmonic_figure)
+        harmonic_layout.addWidget(self.resonator_harmonic_canvas)
+        resonator_sub_tabs.addTab(harmonic_widget, "Relaciones Armónicas")
+        
+        # Impedancia Superpuesta
+        impedance_widget = QWidget()
+        impedance_layout = QVBoxLayout(impedance_widget)
+        
+        # Botón de información
+        impedance_info_layout = QHBoxLayout()
+        impedance_info_layout.addStretch()
+        impedance_info_btn = QPushButton("ℹ️ Información")
+        impedance_info_btn.setMaximumWidth(120)
+        impedance_info_btn.clicked.connect(lambda: self._show_graph_info("resonator_impedance"))
+        impedance_info_layout.addWidget(impedance_info_btn)
+        impedance_layout.addLayout(impedance_info_layout)
+        
+        self.resonator_impedance_figure = Figure(figsize=(10, 6))
+        self.resonator_impedance_canvas = FigureCanvas(self.resonator_impedance_figure)
+        impedance_layout.addWidget(self.resonator_impedance_canvas)
+        resonator_sub_tabs.addTab(impedance_widget, "Impedancia Superpuesta")
+        
+        resonator_layout.addWidget(resonator_sub_tabs)
+        sub_tabs.addTab(resonator_widget, "Resonador Truncado")
+        
+        # Almacenar referencia al analizador de resonador truncado
+        self.resonator_truncation_analyzers: Dict[str, Any] = {}  # Dict[flute_name, ResonatorTruncationAnalyzer]
         
         layout.addWidget(sub_tabs)
     
@@ -1393,6 +1734,7 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         
         self.plotter_3d = None  # Se inicializa después
         
+        # Conectar cambio de tab para inicializar PyVista solo cuando sea necesario
         # Conectar cambio de tab para inicializar PyVista solo cuando sea necesario
         self.tabs.currentChanged.connect(self._on_tab_changed)
     
@@ -1635,6 +1977,31 @@ class UnifiedFluteGUI_Qt(QMainWindow):
                 )
             except:
                 pass
+        except (sqlite3.OperationalError, OSError) as e:
+            logger.error(f"Error de I/O inicializando DB Manager: {e}")
+            self.db_manager = None
+            # No mostrar mensaje si la ventana aún no está lista
+            try:
+                error_msg = str(e)
+                if "disk I/O error" in error_msg.lower():
+                    QMessageBox.warning(
+                        self, "Advertencia - Base de Datos",
+                        "No se pudo acceder a la base de datos debido a un error de I/O.\n\n"
+                        "Esto puede ocurrir si:\n"
+                        "• La base de datos está en Google Drive y hay problemas de sincronización\n"
+                        "• El archivo está bloqueado por otro proceso\n"
+                        "• Hay problemas de permisos o espacio en disco\n\n"
+                        "La aplicación funcionará en modo sin caché.\n"
+                        "Los cálculos se realizarán directamente desde los archivos JSON."
+                    )
+                else:
+                    QMessageBox.warning(
+                        self, "Advertencia",
+                        f"No se pudo inicializar la base de datos: {e}\n\n"
+                        "La aplicación funcionará en modo sin caché."
+                    )
+            except:
+                pass  # Si la ventana no está lista, solo loguear
         except Exception as e:
             logger.error(f"Error inicializando DB Manager: {e}", exc_info=True)
             self.db_manager = None
@@ -1650,7 +2017,7 @@ class UnifiedFluteGUI_Qt(QMainWindow):
     
     def _on_tab_changed(self, index: int):
         """Maneja cambio de tab para lazy loading."""
-        # Si es el tab 3D y no está inicializado, inicializarlo ahora
+        # Si es el tab 3D (índice 3) y no está inicializado, inicializarlo ahora
         if index == 3 and not self._3d_initialized and PYVISTA_AVAILABLE:
             self._init_3d_viewer()
     
@@ -1860,6 +2227,9 @@ class UnifiedFluteGUI_Qt(QMainWindow):
             self.flute_data_list.append(temp_flute)
             self.flute_ops_list.append(FluteOperations(temp_flute))
             
+            # Actualizar label de flautas cargadas
+            self._update_loaded_flutes_label()
+            
             # Asegurar finger_frequencies
             self._ensure_finger_frequencies()
             
@@ -1908,6 +2278,9 @@ class UnifiedFluteGUI_Qt(QMainWindow):
                     )
                     
                     self.flute_data_list.append(new_flute_data)
+                    
+                    # Actualizar label de flautas cargadas
+                    self._update_loaded_flutes_label()
                     
                     # Actualizar selectores en tabs
                     self._update_flute_selectors()
@@ -1990,6 +2363,11 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         self.flute_data_list.clear()
         self.flute_ops_list.clear()
         self.flutes_3d_data.clear()
+        self.flute_plans.clear()
+        
+        # Actualizar label de flautas cargadas
+        self._update_loaded_flutes_label()
+        self._update_plans_viewer()
         
         # Limpiar árbol si existe (se crea cuando se accede a la pestaña 3D)
         if hasattr(self, 'flute_tree') and self.flute_tree:
@@ -2029,6 +2407,16 @@ class UnifiedFluteGUI_Qt(QMainWindow):
                 logger.debug(f"Añadiendo {flute_name} a listas...")
                 self.flute_data_list.append(flute_data)
                 self.flute_ops_list.append(FluteOperations(flute_data))
+                
+                # Buscar planos de la flauta
+                try:
+                    plans = flute_data.find_flute_plans()
+                    self.flute_plans[flute_data.flute_model] = plans
+                    logger.info(f"Planos encontrados para {flute_data.flute_model}: {len(plans.get('all_plans', []))}")
+                except Exception as e:
+                    logger.warning(f"Error buscando planos para {flute_data.flute_model}: {e}")
+                    self.flute_plans[flute_data.flute_model] = {'all_plans': []}
+                
                 QApplication.processEvents()
                 
                 logger.debug(f"Añadiendo {flute_name} al árbol...")
@@ -2110,9 +2498,12 @@ class UnifiedFluteGUI_Qt(QMainWindow):
             
             # No mostrar pop-up de éxito, solo mostrar errores
             logger.info(f"Carga completa: {len(self.flute_data_list)} flautas cargadas exitosamente")
+            # Actualizar label de flautas cargadas
+            self._update_loaded_flutes_label()
         else:
             # Solo mostrar pop-up cuando hay un error (no se cargó ninguna flauta)
             QMessageBox.warning(self, "Sin Datos", "No se pudo cargar ninguna flauta.")
+            self._update_loaded_flutes_label()
     
     def _scan_3d_files_for_flute(self, flute_dir: Path, flute_name: str) -> List[str]:
         """Escanea archivos 3D para una flauta (sin generar sólidos todavía)."""
@@ -2394,6 +2785,7 @@ class UnifiedFluteGUI_Qt(QMainWindow):
         self._update_2d_plots()
         self._update_admittance_options()
         self._update_analysis_plots()
+        self._update_plans_viewer()
     
     def _update_2d_plots(self):
         """Actualiza gráficos 2D."""
@@ -3069,6 +3461,915 @@ class UnifiedFluteGUI_Qt(QMainWindow):
                 # Si no hay analizador, crearlo
                 self.analyzer = FluteAnalyzer(self.flute_data_list)
                 self._update_analysis_plots()
+    
+    def _run_resonator_truncation_analysis(self):
+        """Ejecuta el análisis de resonador truncado para todas las flautas cargadas y actualiza los gráficos."""
+        if not self.flute_data_list:
+            QMessageBox.warning(self, "Sin Datos", "No hay flautas cargadas para analizar.")
+            return
+        
+        try:
+            # Parsear porcentajes
+            percentages_str = self.resonator_percentages_edit.text().strip()
+            percentages = [float(p.strip()) for p in percentages_str.split(',') if p.strip()]
+            
+            if not percentages:
+                QMessageBox.warning(self, "Error", "Por favor, ingrese al menos un porcentaje válido.")
+                return
+            
+            # Validar porcentajes
+            percentages = [p for p in percentages if 0 < p <= 100]
+            if not percentages:
+                QMessageBox.warning(self, "Error", "Los porcentajes deben estar entre 0 y 100.")
+                return
+            
+            # Mostrar diálogo de progreso
+            num_flutes = len(self.flute_data_list)
+            progress = QProgressDialog(
+                f"Ejecutando análisis de resonador truncado para {num_flutes} flauta(s)...", 
+                "Cancelar", 
+                0, 
+                100, 
+                self
+            )
+            progress.setWindowModality(Qt.WindowModal)
+            progress.setValue(0)
+            QApplication.processEvents()
+            
+            # Analizar todas las flautas
+            include_embouchure = self.resonator_include_embouchure.isChecked()
+            self.resonator_truncation_analyzers = {}
+            total_results = 0
+            
+            for idx, flute_data in enumerate(self.flute_data_list):
+                flute_name = flute_data.flute_model
+                progress.setLabelText(f"Analizando {flute_name} ({idx+1}/{num_flutes})...")
+                progress.setValue(int((idx / num_flutes) * 80))
+                QApplication.processEvents()
+                
+                try:
+                    # Crear analizador para esta flauta
+                    analyzer = ResonatorTruncationAnalyzer(
+                        flute_data=flute_data,
+                        truncation_percentages=percentages,
+                        include_embouchure=include_embouchure
+                    )
+                    
+                    # Ejecutar análisis
+                    results = analyzer.analyze()
+                    
+                    if results:
+                        self.resonator_truncation_analyzers[flute_name] = analyzer
+                        total_results += len(results)
+                        logger.info(f"Análisis completado para {flute_name}: {len(results)} secciones")
+                    else:
+                        logger.warning(f"No se obtuvieron resultados para {flute_name}")
+                        
+                except Exception as e:
+                    logger.error(f"Error analizando {flute_name}: {e}", exc_info=True)
+                    QMessageBox.warning(
+                        self,
+                        "Advertencia",
+                        f"Error analizando {flute_name}:\n{str(e)}\n\nContinuando con las demás flautas..."
+                    )
+            
+            if not self.resonator_truncation_analyzers:
+                QMessageBox.warning(self, "Error", "No se obtuvieron resultados del análisis para ninguna flauta.")
+                progress.close()
+                return
+            
+            progress.setValue(85)
+            QApplication.processEvents()
+            
+            # Actualizar gráficos
+            self._update_resonator_truncation_plots()
+            
+            progress.setValue(100)
+            QApplication.processEvents()
+            progress.close()
+            
+            QMessageBox.information(
+                self, 
+                "Análisis Completado", 
+                f"Análisis completado exitosamente para {len(self.resonator_truncation_analyzers)} flauta(s).\n"
+                f"Total: {total_results} secciones analizadas."
+            )
+            
+        except Exception as e:
+            logger.error(f"Error ejecutando análisis de resonador truncado: {e}", exc_info=True)
+            QMessageBox.critical(
+                self, 
+                "Error", 
+                f"Error ejecutando análisis:\n{str(e)}"
+            )
+    
+    def _update_resonator_truncation_plots(self):
+        """Actualiza los gráficos del análisis de resonador truncado para todas las flautas."""
+        if not self.resonator_truncation_analyzers:
+            # Mostrar mensaje de que no hay datos
+            for fig in [self.resonator_freq_figure, self.resonator_inharm_figure, 
+                       self.resonator_harmonic_figure, self.resonator_impedance_figure]:
+                fig.clear()
+                ax = fig.add_subplot(111)
+                ax.text(0.5, 0.5, "Ejecute el análisis para ver los resultados.",
+                       ha='center', va='center', transform=ax.transAxes,
+                       fontsize=12, bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+                ax.set_title("Sin Datos")
+                ax.axis('off')
+            
+            self.resonator_freq_canvas.draw()
+            self.resonator_inharm_canvas.draw()
+            self.resonator_harmonic_canvas.draw()
+            self.resonator_impedance_canvas.draw()
+            return
+        
+        try:
+            from constants import BASE_COLORS, LINESTYLES
+            
+            # Obtener colores para cada flauta
+            num_flutes = len(self.resonator_truncation_analyzers)
+            if num_flutes <= len(BASE_COLORS):
+                colors = BASE_COLORS[:num_flutes]
+            else:
+                import matplotlib.cm as cm
+                colormap = cm.get_cmap('tab10')
+                colors = [colormap(i / num_flutes) for i in range(num_flutes)]
+            
+            # 1. Frecuencias vs Longitud (combinado para todas las flautas)
+            fig_freq, ax_freq = plt.subplots(figsize=(10, 6))
+            for idx, (flute_name, analyzer) in enumerate(self.resonator_truncation_analyzers.items()):
+                percentages = sorted(analyzer.results.keys(), reverse=True)
+                max_modes = 3  # f0, f1, f2
+                
+                for mode_idx in range(max_modes):
+                    frequencies = []
+                    valid_percentages = []
+                    
+                    for pct in percentages:
+                        result = analyzer.results[pct]
+                        antires = result.get('antiresonance_frequencies', [])
+                        if len(antires) > mode_idx:
+                            frequencies.append(antires[mode_idx])
+                            valid_percentages.append(pct)
+                    
+                    if frequencies:
+                        linestyle = LINESTYLES[mode_idx % len(LINESTYLES)]
+                        label = f'{flute_name} - f{mode_idx}' if mode_idx == 0 else None
+                        ax_freq.plot(valid_percentages, frequencies, 'o-', 
+                                   color=colors[idx], linestyle=linestyle,
+                                   label=label, linewidth=2, markersize=4, alpha=0.8)
+            
+            ax_freq.set_xlabel('Porcentaje de Longitud (%)', fontsize=12)
+            ax_freq.set_ylabel('Frecuencia (Hz)', fontsize=12)
+            ax_freq.set_title('Frecuencias de Resonancia vs. Longitud Truncada', fontsize=14)
+            ax_freq.legend(loc='best', ncol=2)
+            ax_freq.grid(True, alpha=0.3)
+            self._copy_figure_to_canvas(fig_freq, self.resonator_freq_figure, self.resonator_freq_canvas)
+            plt.close(fig_freq)
+            
+            # 2. Inharmonicidad vs Longitud (combinado)
+            fig_inharm, ax_inharm = plt.subplots(figsize=(10, 6))
+            for idx, (flute_name, analyzer) in enumerate(self.resonator_truncation_analyzers.items()):
+                percentages = sorted(analyzer.results.keys(), reverse=True)
+                lengths = [analyzer.results[p].get('length_mm', np.nan) for p in percentages]
+                # La clave correcta es 'inharmonicity_cents', no 'inharmonicity'
+                inharmonicities = [analyzer.results[p].get('inharmonicity_cents', np.nan) for p in percentages]
+                
+                valid_mask = ~np.isnan(inharmonicities) & ~np.isnan(lengths)
+                if np.any(valid_mask):
+                    valid_lengths = np.array(lengths)[valid_mask]
+                    valid_inharm = np.array(inharmonicities)[valid_mask]
+                    ax_inharm.plot(valid_lengths, valid_inharm, 'o-', 
+                                 color=colors[idx], label=flute_name, 
+                                 linewidth=2, markersize=4, alpha=0.8)
+            
+            # Agregar línea de referencia para armónico perfecto
+            ax_inharm.axhline(y=0, color='gray', linestyle='--', linewidth=1, alpha=0.5, label='Armónico perfecto')
+            
+            ax_inharm.set_xlabel('Longitud Truncada (mm)', fontsize=12)
+            ax_inharm.set_ylabel('Inharmonicidad (cents)', fontsize=12)
+            ax_inharm.set_title('Inharmonicidad vs. Longitud Truncada', fontsize=14)
+            ax_inharm.legend(loc='best')
+            ax_inharm.grid(True, alpha=0.3)
+            self._copy_figure_to_canvas(fig_inharm, self.resonator_inharm_figure, self.resonator_inharm_canvas)
+            plt.close(fig_inharm)
+            
+            # 3. Relaciones Armónicas (combinado)
+            fig_harmonic, ax_harmonic = plt.subplots(figsize=(10, 6))
+            for idx, (flute_name, analyzer) in enumerate(self.resonator_truncation_analyzers.items()):
+                percentages = sorted(analyzer.results.keys(), reverse=True)
+                lengths = [analyzer.results[p].get('length_mm', np.nan) for p in percentages]
+                
+                ratios_f1_f0 = []
+                ratios_f2_f0 = []
+                valid_lengths = []
+                
+                for p in percentages:
+                    result = analyzer.results[p]
+                    f0 = result.get('f0', np.nan)
+                    f1 = result.get('f1', np.nan)
+                    f2 = result.get('f2', np.nan)
+                    length = result.get('length_mm', np.nan)
+                    
+                    if not np.isnan(f0) and not np.isnan(length):
+                        valid_lengths.append(length)
+                        if not np.isnan(f1) and f0 > 0:
+                            ratios_f1_f0.append(f1 / f0)
+                        else:
+                            ratios_f1_f0.append(np.nan)
+                        
+                        if not np.isnan(f2) and f0 > 0:
+                            ratios_f2_f0.append(f2 / f0)
+                        else:
+                            ratios_f2_f0.append(np.nan)
+                
+                if valid_lengths:
+                    # f1/f0
+                    valid_mask = ~np.isnan(ratios_f1_f0)
+                    if np.any(valid_mask):
+                        ax_harmonic.plot(np.array(valid_lengths)[valid_mask], 
+                                       np.array(ratios_f1_f0)[valid_mask], 
+                                       'o-', color=colors[idx], linestyle='-',
+                                       label=f'{flute_name} - f1/f0', 
+                                       linewidth=2, markersize=4, alpha=0.8)
+                    
+                    # f2/f0
+                    valid_mask = ~np.isnan(ratios_f2_f0)
+                    if np.any(valid_mask):
+                        ax_harmonic.plot(np.array(valid_lengths)[valid_mask], 
+                                       np.array(ratios_f2_f0)[valid_mask], 
+                                       's--', color=colors[idx], linestyle='--',
+                                       label=f'{flute_name} - f2/f0', 
+                                       linewidth=2, markersize=4, alpha=0.8)
+            
+            # Líneas de referencia para relaciones ideales
+            ax_harmonic.axhline(y=2.0, color='gray', linestyle=':', linewidth=1, alpha=0.5, label='Ideal f1/f0 = 2.0')
+            ax_harmonic.axhline(y=3.0, color='gray', linestyle=':', linewidth=1, alpha=0.5, label='Ideal f2/f0 = 3.0')
+            
+            ax_harmonic.set_xlabel('Longitud Truncada (mm)', fontsize=12)
+            ax_harmonic.set_ylabel('Ratio Armónico', fontsize=12)
+            ax_harmonic.set_title('Relaciones Armónicas vs. Longitud Truncada', fontsize=14)
+            ax_harmonic.legend(loc='best', ncol=2)
+            ax_harmonic.grid(True, alpha=0.3)
+            self._copy_figure_to_canvas(fig_harmonic, self.resonator_harmonic_figure, self.resonator_harmonic_canvas)
+            plt.close(fig_harmonic)
+            
+            # 4. Impedancia Superpuesta (mostrar algunas curvas representativas de cada flauta)
+            fig_impedance, ax_impedance = plt.subplots(figsize=(12, 7))
+            for idx, (flute_name, analyzer) in enumerate(self.resonator_truncation_analyzers.items()):
+                all_percentages = sorted(analyzer.results.keys(), reverse=True)
+                # Mostrar ~3 curvas representativas por flauta
+                step = max(1, len(all_percentages) // 3)
+                selected_percentages = all_percentages[::step][:3]
+                
+                for pct in selected_percentages:
+                    result = analyzer.results[pct]
+                    ic = result.get('impedance_computation')
+                    if ic is not None:
+                        try:
+                            freqs = ic.frequencies
+                            imp = ic.impedance
+                            imp_mag = np.abs(imp)
+                            
+                            label = f'{flute_name} - {pct:.0f}%' if pct == selected_percentages[0] else None
+                            ax_impedance.plot(freqs, imp_mag, color=colors[idx], 
+                                            linestyle=LINESTYLES[selected_percentages.index(pct) % len(LINESTYLES)],
+                                            label=label, linewidth=1.5, alpha=0.7)
+                        except Exception as e:
+                            logger.warning(f"Error graficando impedancia para {flute_name} {pct}%: {e}")
+            
+            ax_impedance.set_xlabel('Frecuencia (Hz)', fontsize=12)
+            ax_impedance.set_ylabel('|Impedancia| (Pa·s/m³)', fontsize=12)
+            ax_impedance.set_title('Curvas de Impedancia Superpuestas', fontsize=14)
+            ax_impedance.set_xlim(100, 2000)
+            ax_impedance.legend(loc='best', ncol=2, fontsize=9)
+            ax_impedance.grid(True, alpha=0.3)
+            self._copy_figure_to_canvas(fig_impedance, self.resonator_impedance_figure, self.resonator_impedance_canvas)
+            plt.close(fig_impedance)
+            
+        except Exception as e:
+            logger.error(f"Error actualizando gráficos de resonador truncado: {e}", exc_info=True)
+            QMessageBox.warning(
+                self,
+                "Error",
+                f"Error actualizando gráficos:\n{str(e)}"
+            )
+    
+    def _show_graph_info(self, graph_type: str):
+        """Shows detailed information about the selected graph for acoustic scientists."""
+        info_texts = {
+            "summary": """
+<b>📊 Summary Dashboard</b>
+
+This panel provides a comparative overview of key acoustic metrics for all loaded flutes.
+
+<b>Key Metrics:</b>
+• <b>Inharmonicity:</b> Deviation in cents between actual resonance frequencies and equal temperament theoretical frequencies. Lower values indicate better tuning. Calculated as: <i>Δ = 1200·log₂(f_play/f₀)</i> where f_play is the target frequency and f₀ is the first antiresonance frequency.
+
+• <b>MOC (Mouthpiece Octave Compensation):</b> Quantifies the compression of modal intervals between the first and second octave due to frequency-dependent embouchure end corrections. Values close to 1.0 indicate minimal player compensation needed. Formula: <i>MOC = (f₁ - f₀)/(f_play_II - f_play_I)</i> where f₀, f₁ are antiresonance frequencies and f_play_I, f_play_II are target frequencies. Related to embouchure corrections: <i>Δl_n = (c/4)·(1/f_res,n - 1/f_play,n)</i>
+
+• <b>B_I (First-Octave Pitch Adjustment):</b> Quantifies the intonation adjustment in cents required to match the target fundamental frequency relative to the passive antiresonance. <i>B_I = 1200·log₂(f_play_I/f₀)</i> where f_play_I is the target frequency and f₀ is the first antiresonance frequency.
+
+• <b>ESPE (Embouchure Shift Pitch Effect):</b> Estimates the pitch change in cents induced on the fundamental by the differential embouchure length correction for the octave jump. <i>ESPE = 1200·log₂(L_eff,I/(L_eff,I + Δ(Δl_emb)))</i> where Δ(Δl_emb) = Δl_II,emb - Δl_I,emb is the difference in embouchure corrections, with <i>Δl_emb,n ≈ (nc/2)·(1/f_play,n - 1/f_n)</i>
+
+<b>Radar Chart:</b>
+Polar plot comparing all metrics simultaneously. Each flute is represented by a colored polygon. Values closer to the center indicate better acoustic performance.
+            """,
+            "inharmonicity": """
+<b>Inharmonicity</b>
+
+This plot displays the inharmonicity for each note of the flute, measured in cents.
+
+<b>Definition:</b>
+Inharmonicity quantifies the deviation of actual resonance frequencies from equal temperament theoretical frequencies. The calculation uses the logarithmic cents scale, where 1 cent = 1/100 of a semitone.
+
+<b>Mathematical Formulation:</b>
+The inharmonicity Δ (in cents) is calculated as:
+<br><br>
+<i>Δ = 1200·log₂(f_play/f₀)</i>
+<br><br>
+where:
+<ul>
+<li><i>f_play</i> is the target frequency from the fingering chart (equal temperament)</li>
+<li><i>f₀</i> is the first antiresonance frequency (minimum of acoustic impedance)</li>
+</ul>
+
+The factor 1200 comes from the definition: 1200 cents = 1 octave = log₂(2) = 1.
+
+<b>Physical Interpretation:</b>
+• <b>Δ ≈ 0 cents:</b> Note is perfectly tuned to equal temperament
+• <b>Δ > 0:</b> Note is sharper than expected (f_play > f₀)
+• <b>Δ < 0:</b> Note is flatter than expected (f_play < f₀)
+• <b>|Δ| > 20 cents:</b> May indicate tuning or design issues
+
+<b>Axes:</b>
+• <b>X-axis:</b> Musical notes (D, D#, E, F, etc.)
+• <b>Y-axis:</b> Inharmonicity in cents
+
+<b>Acoustic Significance:</b>
+This metric helps identify notes requiring adjustments in hole geometry or bore conicity to achieve proper tuning.
+            """,
+            "resonance": """
+<b>Resonance Frequencies</b>
+
+This plot displays the resonance (antiresonance) frequencies for each note, compared against equal temperament theoretical frequencies.
+
+<b>Physical Definition:</b>
+Resonance frequencies (f₀, f₁, f₂, ...) correspond to frequencies where the acoustic impedance Z(ω) reaches local minima. These are the frequencies at which the resonator exhibits maximum admittance Y(ω) = 1/Z(ω).
+
+<b>Mathematical Relationship:</b>
+For an open-open tube, the theoretical resonance frequencies follow:
+<br><br>
+<i>f_n = n·c₀/(2·L_eff)</i>
+<br><br>
+where:
+<ul>
+<li><i>n</i> is the mode number (1, 2, 3, ...)</li>
+<li><i>c₀</i> is the speed of sound (≈343 m/s at 20°C)</li>
+<li><i>L_eff</i> is the effective length including end corrections</li>
+</ul>
+
+The antiresonance frequencies are extracted from the impedance spectrum:
+<br><br>
+<i>f₀ = argmin_f |Z(f)|</i>
+<br><br>
+where Z(f) is the complex acoustic impedance computed via transmission line theory.
+
+<b>Plot Interpretation:</b>
+• <b>Black line:</b> Equal temperament theoretical frequencies (reference)
+• <b>Colored lines:</b> Actual resonance frequencies for each flute
+• <b>Deviations:</b> Differences indicate tuning deviations from equal temperament
+
+<b>Axes:</b>
+• <b>X-axis:</b> Musical notes
+• <b>Y-axis:</b> Frequency in Hz
+
+<b>Acoustic Analysis:</b>
+This visualization reveals how actual resonance frequencies deviate from equal temperament across the instrument's range, indicating regions requiring geometric optimization.
+            """,
+            "moc": """
+<b>MOC (Mouthpiece Octave Compensation)</b>
+
+This plot displays the Mouthpiece Octave Compensation metric for each note, quantifying the compression of modal intervals between the first and second octave.
+
+<b>Physical Definition:</b>
+MOC characterizes how the embouchure (mouthpiece) influences the instrument to correct octave tuning. In transverse flutes, the effective acoustic length differs between the fundamental and second-harmonic modes due to frequency-dependent embouchure end corrections. The embouchure end correction ΔL_head,n is frequency-dependent because the headjoint cavity (length L_h from embouchure hole to cork) acts as a reactive load:
+<br><br>
+<i>Z_cav(f) = -jZ₀·cot(kL_h)</i>
+<br><br>
+where k = 2πf/c, Z₀ = ρc/S is the characteristic impedance, and L_h is typically ~17 mm. At low frequencies (fundamental), kL_h << 1, so Z_cav ≈ -jZ₀/(kL_h) ∝ -j/f, providing stronger reactive loading and increasing the effective length.
+
+<b>Mathematical Formulation:</b>
+The effective acoustic length for mode n is:
+<br><br>
+<i>L_eff,n = L + ΔL_head,n + ΔL_foot,n</i>
+<br><br>
+where L is the physical length, and the frequencies are:
+<br><br>
+<i>f_I = c/(2L_eff,1)</i>
+<br><br>
+<i>f_II = c/L_eff,2</i>
+<br><br>
+The octave ratio reveals the effective length relationship:
+<br><br>
+<i>f_II/(2f_I) = L_eff,1/L_eff,2 = (L + ΔL_head,1)/(L + ΔL_head,2)</i>
+<br><br>
+Typically, ΔL_head,1 > ΔL_head,2, making the second mode sharp relative to an exact octave.
+
+The metric shown here is calculated as:
+<br><br>
+<i>MOC = (f₁ - f₀)/(f_play_II - f_play_I)</i>
+<br><br>
+where:
+<ul>
+<li><i>f₀, f₁</i> are the first and second antiresonance frequencies (impedance minima)</li>
+<li><i>f_play_I</i> is the target frequency for the first octave (from fingering chart)</li>
+<li><i>f_play_II = 2·f_play_I</i> is the target frequency for the second octave</li>
+</ul>
+
+This is related to the embouchure length corrections defined in the MOC framework:
+<br><br>
+<i>Δl_n = (c/4)·(1/f_res,n - 1/f_play,n)</i>
+<br><br>
+Alternative MOC definitions include:
+<br><br>
+<i>MOC_Δ = Δl_I - Δl_II = (c/4)·(1/f_res,1 - 2/f_play)</i>
+<br><br>
+<i>MOC_R = Δl_I/Δl_II = (1 - f_res,1/f_play)/(1 - f_res,2/(2f_play))</i>
+<br><br>
+
+For an ideal open-open cylindrical pipe with L_eff,1 = L_eff,2:
+<br><br>
+<i>f₁/f₀ = 2.0</i> and <i>MOC = 1.0</i>
+<br><br>
+
+<b>Physical Interpretation:</b>
+• <b>MOC = 1.0:</b> Perfectly harmonic behavior (ideal case)
+• <b>MOC < 1.0:</b> Modal intervals are compressed (harmonics are closer together)
+• <b>MOC > 1.0:</b> Modal intervals are expanded (harmonics are further apart)
+
+The deviation from unity quantifies the effort the player must exert to achieve in-tune octaves, either through passive design compensation (cork position L_h, embouchure geometry) or active player technique (embouchure adjustments).
+
+<b>Axes:</b>
+• <b>X-axis:</b> Musical notes
+• <b>Y-axis:</b> MOC value (dimensionless)
+
+<b>Acoustic Significance:</b>
+MOC values close to 1.0 indicate that the instrument requires minimal player compensation for octave tuning. Values deviating significantly from 1.0 reveal the magnitude of embouchure adjustments needed to achieve in-tune octaves.
+            """,
+            "bi_espe": """
+<b>B_I and ESPE</b>
+
+This plot displays two complementary metrics for analyzing player-instrument interaction during octave transitions on transverse flutes.
+
+<b>B_I (First-Octave Pitch Adjustment):</b>
+Quantifies the intonation adjustment in cents required for the player to match the target fundamental frequency relative to the instrument's passive antiresonance:
+<br><br>
+<i>B_I = 1200·log₂(f_play_I/f₀)</i>
+<br><br>
+where:
+<ul>
+<li><i>f_play_I</i> is the target frequency for the first octave (from fingering chart)</li>
+<li><i>f₀</i> is the first antiresonance frequency (impedance minimum)</li>
+</ul>
+
+<b>Physical Interpretation:</b>
+• <b>B_I > 0:</b> Player needs to play sharper than the passive f₀
+• <b>B_I < 0:</b> Player needs to play flatter than the passive f₀
+• <b>B_I ≈ 0:</b> Passive f₀ is already close to target pitch, requiring minimal adjustment
+
+<b>ESPE (Embouchure Shift Pitch Effect):</b>
+Estimates the pitch change in cents that would be induced on the fundamental note solely by the differential embouchure length correction associated with the octave jump. The calculation follows:
+
+1. Embouchure length corrections for each mode:
+<br><br>
+<i>Δl_emb,n ≈ (nc/2)·(1/f_play,n - 1/f_n)</i>
+<br><br>
+Specifically:
+<br><br>
+<i>Δl_I,emb = (c/2)·(1/f_play_I - 1/f₀)</i>
+<br><br>
+<i>Δl_II,emb = c·(1/f_play_II - 1/f₁)</i>
+<br><br>
+
+2. Differential embouchure correction:
+<br><br>
+<i>Δ(Δl_emb) = Δl_II,emb - Δl_I,emb</i>
+<br><br>
+
+3. Effective length for fundamental mode:
+<br><br>
+<i>L_eff,I = c/(2·f_play_I)</i>
+<br><br>
+
+4. Hypothetical frequency with differential correction applied:
+<br><br>
+<i>f'_play,I = c/(2·(L_eff,I + Δ(Δl_emb)))</i>
+<br><br>
+
+5. ESPE in cents:
+<br><br>
+<i>ESPE = 1200·log₂(f'_play,I/f_play_I) = 1200·log₂(L_eff,I/(L_eff,I + Δ(Δl_emb)))</i>
+<br><br>
+
+where c is the speed of sound (≈343 m/s at 20°C).
+
+<b>Physical Interpretation:</b>
+• <b>ESPE < 0:</b> The embouchure change for the octave tends to flatten the pitch (Δ(Δl_emb) > 0)
+• <b>ESPE > 0:</b> The embouchure change for the octave tends to sharpen the pitch (Δ(Δl_emb) < 0)
+• <b>ESPE ≈ 0:</b> The differential embouchure correction is small, suggesting minimal inherent pitch-shifting effect
+
+<b>Axes:</b>
+• <b>X-axis:</b> Musical notes
+• <b>Y-axis:</b> Deviation in cents
+
+<b>Acoustic Significance:</b>
+B_I assesses the initial intonation task for the fundamental, while ESPE isolates and quantifies the pitch effect associated with the embouchure change required for the octave jump. Together, they provide insights into player compensation strategies and the inherent challenges posed by the instrument's acoustic properties.
+            """,
+            "peak_heights": """
+<b>Admittance Peak Heights</b>
+
+This plot displays the admittance peak heights for each note and resonance mode.
+
+<b>Physical Definition:</b>
+Acoustic admittance Y(ω) is the inverse of acoustic impedance Z(ω):
+<br><br>
+<i>Y(ω) = 1/Z(ω)</i>
+<br><br>
+where Z(ω) = P(ω)/U(ω) is the ratio of acoustic pressure to volume velocity.
+
+The admittance magnitude is calculated as:
+<br><br>
+<i>|Y(ω)| = |1/Z(ω)|</i>
+<br><br>
+and displayed in decibels:
+<br><br>
+<i>Y_dB = 20·log₁₀(|Y(ω)|)</i>
+<br><br>
+
+Peak heights correspond to resonance frequencies where the instrument responds most readily, i.e., where impedance minima occur.
+
+<b>Physical Interpretation:</b>
+• <b>High peaks:</b> Indicate strong, well-defined resonances with low acoustic losses
+• <b>Low peaks:</b> May indicate acoustic losses, weak resonances, or damping effects
+• <b>Consistency:</b> Similar peak heights across notes indicate balanced design
+
+The peak height is related to the quality factor Q and acoustic efficiency:
+<br><br>
+<i>Y_peak ∝ Q/(R_acoustic)</i>
+<br><br>
+where R_acoustic is the acoustic resistance.
+
+<b>Axes:</b>
+• <b>X-axis:</b> Musical notes
+• <b>Y-axis:</b> Admittance peak height in dB
+
+<b>Acoustic Significance:</b>
+This metric helps evaluate acoustic efficiency and resonance quality, indicating how easily the instrument can be excited at different frequencies.
+            """,
+            "q_factor": """
+<b>Q-Factor (Quality Factor)</b>
+
+This plot displays the quality factor Q for each note's resonance, quantifying the sharpness of the resonance peak.
+
+<b>Mathematical Definition:</b>
+The quality factor Q is defined as the ratio of the resonance frequency to the bandwidth at -3 dB:
+<br><br>
+<i>Q = f_resonance / Δf_(-3dB)</i>
+<br><br>
+where:
+<ul>
+<li><i>f_resonance</i> is the resonance frequency (antiresonance frequency f₀)</li>
+<li><i>Δf_(-3dB)</i> is the full width at half maximum (FWHM) of the admittance peak</li>
+</ul>
+
+The -3 dB bandwidth is determined by finding the frequencies where:
+<br><br>
+<i>|Y(f)| = Y_peak / √2</i>
+<br><br>
+The bandwidth is then:
+<br><br>
+<i>Δf_(-3dB) = f_upper - f_lower</i>
+<br><br>
+where f_upper and f_lower are the frequencies above and below the peak where the admittance drops to 1/√2 of the peak value.
+
+<b>Physical Interpretation:</b>
+• <b>Q > 50:</b> Very narrow resonance, highly frequency-selective response
+• <b>20 < Q < 50:</b> Moderately selective resonance
+• <b>Q < 20:</b> Broad resonance, less frequency-selective
+
+The Q-factor is related to the damping ratio ζ:
+<br><br>
+<i>Q = 1/(2ζ)</i>
+<br><br>
+and to the time constant of the resonance decay:
+<br><br>
+<i>τ = Q/(π·f_resonance)</i>
+<br><br>
+
+<b>Axes:</b>
+• <b>X-axis:</b> Musical notes
+• <b>Y-axis:</b> Quality factor Q (dimensionless)
+
+<b>Acoustic Significance:</b>
+Q-factor relates to ease of sound production and tuning stability. Very high Q values may make notes difficult to play (requiring precise embouchure control), while very low Q values may result in less defined, less stable tones.
+            """,
+            "tonal": """
+<b>Tonal Characteristics</b>
+
+This plot displays harmonic ratios and phase coherence between different resonance modes.
+
+<b>Harmonic Ratios:</b>
+Shows the frequency ratios between resonance modes:
+<br><br>
+<i>R_n = f_n/f₀</i>
+<br><br>
+where f_n is the n-th antiresonance frequency and f₀ is the fundamental.
+
+For an ideal open-open cylindrical tube, these ratios should be:
+<br><br>
+<i>R₁ = f₁/f₀ = 2.0</i>
+<br><br>
+<i>R₂ = f₂/f₀ = 3.0</i>
+<br><br>
+<i>R₃ = f₃/f₀ = 4.0</i>
+<br><br>
+Deviations from integer values indicate non-ideal behavior due to:
+<ul>
+<li>Bore conicity effects</li>
+<li>End corrections</li>
+<li>Hole interactions</li>
+</ul>
+
+<b>Phase Coherence:</b>
+Measures the phase relationship between different modes. The phase of the impedance at resonance frequencies is:
+<br><br>
+<i>φ_n = arg(Z(f_n))</i>
+<br><br>
+Phase coherence indicates how consistently the phase behaves across modes. Coherent phase relationships suggest more predictable and musical behavior.
+
+<b>Physical Interpretation:</b>
+• <b>Ratios close to integers:</b> More harmonic behavior
+• <b>High phase coherence:</b> Better tonal quality
+• <b>Large deviations:</b> May indicate design issues
+
+<b>Axes:</b>
+• <b>X-axis:</b> Musical notes
+• <b>Y-axis:</b> Harmonic ratio (dimensionless) or phase coherence
+
+<b>Acoustic Significance:</b>
+These metrics help evaluate tonal quality and musicality, indicating how well the instrument maintains harmonic relationships across its range.
+            """,
+            "stability": """
+<b>Stability (Pitch + Cut-off Frequency)</b>
+
+This plot displays two important aspects of acoustic stability.
+
+<b>Pitch Stability:</b>
+Measures how stable the pitch of each note is. Stable pitch is less sensitive to variations in blowing pressure or fingering. The stability can be quantified by the sensitivity:
+<br><br>
+<i>S_p = ∂f/∂p</i>
+<br><br>
+where f is the frequency and p is the blowing pressure. Lower sensitivity indicates higher stability.
+
+Alternatively, stability can be measured as the frequency deviation under controlled pressure variations:
+<br><br>
+<i>σ_f = std(f(p))</i>
+<br><br>
+where the standard deviation is computed over a range of blowing pressures.
+
+<b>Cut-off Frequency:</b>
+Indicates the upper limit of useful frequency response. Above this frequency, the acoustic response decays significantly. The cut-off frequency f_cutoff is typically defined as the frequency where the admittance drops to a threshold (e.g., 10% of maximum):
+<br><br>
+<i>|Y(f_cutoff)| = 0.1·max(|Y(f)|)</i>
+<br><br>
+For a cylindrical tube with holes, the cut-off frequency is related to the hole spacing and diameter:
+<br><br>
+<i>f_cutoff ≈ c₀/(2·d_hole)</i>
+<br><br>
+where d_hole is the characteristic hole diameter.
+
+<b>Physical Interpretation:</b>
+• <b>High stability:</b> Note is easy to play and maintain in tune
+• <b>High cut-off frequency:</b> Instrument has good response in the high register
+• <b>Low cut-off frequency:</b> May limit the instrument's capability in high registers
+
+<b>Axes:</b>
+• <b>X-axis:</b> Musical notes
+• <b>Y-axis:</b> Stability (dimensionless) or Frequency (Hz)
+
+<b>Acoustic Significance:</b>
+These metrics help evaluate playability and the useful frequency range of the instrument, indicating how forgiving the design is to performance variations.
+            """,
+            "resonator_frequencies": """
+<b>Resonance Frequencies vs. Truncated Length</b>
+
+This plot shows how resonance frequencies (f₀, f₁, f₂) change as the flute resonator is progressively truncated from the end.
+
+<b>Physical Principle:</b>
+By truncating the resonator from the end, we can study how length and conicity affect resonance frequencies without the interference of tone holes. This isolates the pure geometric effect of the bore.
+
+<b>Mathematical Relationship:</b>
+For a truncated length L_trunc, the resonance frequencies follow:
+<br><br>
+<i>f_n(L_trunc) = n·c₀/(2·L_eff(L_trunc))</i>
+<br><br>
+where L_eff(L_trunc) is the effective length including:
+<ul>
+<li>The physical truncated length</li>
+<li>End corrections at both ends</li>
+<li>Conicity effects</li>
+</ul>
+
+The end correction at the open end (truncation point) is:
+<br><br>
+<i>ΔL_end ≈ 0.61·a</i>
+<br><br>
+for an unflanged open end, where a is the radius at the truncation point.
+
+For a conical bore with taper angle α:
+<br><br>
+<i>L_eff = L_trunc + ΔL_embouchure + ΔL_end + f(α, L_trunc)</i>
+<br><br>
+where f(α, L_trunc) accounts for conicity effects.
+
+<b>Physical Interpretation:</b>
+• <b>Ascending lines:</b> Frequencies increase as resonator shortens (expected behavior)
+• <b>Curvature:</b> Indicates the effect of bore conicity
+• <b>Separation between f₀, f₁, f₂:</b> Shows harmonic relationships at different lengths
+
+<b>Axes:</b>
+• <b>X-axis:</b> Truncated length (mm)
+• <b>Y-axis:</b> Frequency (Hz)
+
+<b>Acoustic Significance:</b>
+This analysis allows understanding how bore geometry affects resonance frequencies, helping in instrument design and optimization by revealing the pure resonator behavior.
+            """,
+            "resonator_inharmonicity": """
+<b>Inharmonicity vs. Truncated Length</b>
+
+This plot shows how the resonator's inharmonicity changes as it is progressively truncated.
+
+<b>Physical Principle:</b>
+As the resonator length varies, the relationship between different resonance modes changes. This plot shows how inharmonicity varies with length, revealing the pure geometric contribution to tuning.
+
+<b>Mathematical Formulation:</b>
+For a truncated resonator, inharmonicity is calculated as:
+<br><br>
+<i>Δ(L_trunc) = 1200·log₂(f_play(L_trunc)/f₀(L_trunc))</i>
+<br><br>
+where:
+<ul>
+<li><i>f_play(L_trunc)</i> is the target frequency for the truncated length (may be constant or vary)</li>
+<li><i>f₀(L_trunc)</i> is the first antiresonance frequency for the truncated geometry</li>
+</ul>
+
+The variation with length reveals how the harmonic relationships change:
+<br><br>
+<i>R_n(L_trunc) = f_n(L_trunc)/f₀(L_trunc)</i>
+<br><br>
+For an ideal cylindrical tube, R₁ = 2.0, R₂ = 3.0, etc., independent of length. Deviations indicate:
+<ul>
+<li>Conicity effects</li>
+<li>End correction variations</li>
+<li>Non-uniform bore geometry</li>
+</ul>
+
+<b>Physical Interpretation:</b>
+• <b>Values near 0:</b> More harmonic behavior at that length
+• <b>Large variations:</b> Indicate that certain lengths produce better harmonic behavior
+• <b>Trends:</b> May reveal optimal resonator lengths
+
+<b>Axes:</b>
+• <b>X-axis:</b> Truncated length (mm)
+• <b>Y-axis:</b> Inharmonicity (cents)
+
+<b>Acoustic Significance:</b>
+This analysis helps identify resonator lengths that produce better acoustic behavior, useful for optimizing the design by understanding the pure geometric contribution to tuning.
+            """,
+            "resonator_harmonic_ratios": """
+<b>Harmonic Ratios vs. Truncated Length</b>
+
+This plot shows how harmonic ratios (f₁/f₀, f₂/f₀) change when the resonator is truncated.
+
+<b>Mathematical Definition:</b>
+Harmonic ratios indicate how close resonance modes are to integer values:
+<br><br>
+<i>R_n(L_trunc) = f_n(L_trunc)/f₀(L_trunc)</i>
+<br><br>
+For an ideal cylindrical open-open tube:
+<br><br>
+<i>R₁ = f₁/f₀ = 2.0</i>
+<br><br>
+<i>R₂ = f₂/f₀ = 3.0</i>
+<br><br>
+<i>R₃ = f₃/f₀ = 4.0</i>
+<br><br>
+These ratios are independent of length for an ideal cylinder.
+
+<b>Effect of Conicity:</b>
+For a conical bore with taper, the ratios deviate from integer values. The deviation depends on the conicity parameter:
+<br><br>
+<i>α = (r_end - r_start)/L</i>
+<br><br>
+where r_start and r_end are the radii at the start and end of the truncated section.
+
+The harmonic ratios for a cone follow:
+<br><br>
+<i>R_n(α) = n + δ_n(α)</i>
+<br><br>
+where δ_n(α) is the deviation that depends on the conicity.
+
+<b>Physical Interpretation:</b>
+• <b>Horizontal lines at 2.0 and 3.0:</b> Ideal behavior (gray reference lines)
+• <b>Deviations:</b> Indicate how conicity affects harmonic relationships
+• <b>Consistency:</b> Stable relationships indicate better behavior
+
+<b>Axes:</b>
+• <b>X-axis:</b> Truncated length (mm)
+• <b>Y-axis:</b> Harmonic ratio (dimensionless)
+
+<b>Acoustic Significance:</b>
+This analysis allows evaluating how bore geometry affects inter-mode relationships, crucial for acoustic design. Understanding these relationships helps optimize the bore profile for desired harmonic behavior.
+            """,
+            "resonator_impedance": """
+<b>Superimposed Impedance Curves</b>
+
+This plot displays acoustic impedance curves for different truncated resonator lengths, overlaid on the same graph.
+
+<b>Physical Definition:</b>
+Acoustic impedance Z(ω) is the complex ratio of acoustic pressure to volume velocity:
+<br><br>
+<i>Z(ω) = P(ω)/U(ω)</i>
+<br><br>
+where:
+<ul>
+<li><i>P(ω)</i> is the acoustic pressure (Pa)</li>
+<li><i>U(ω)</i> is the volume velocity (m³/s)</li>
+</ul>
+
+The magnitude is displayed in decibels:
+<br><br>
+<i>|Z(ω)|_dB = 20·log₁₀(|Z(ω)|/Z_ref)</i>
+<br><br>
+where Z_ref is a reference impedance (typically 1 Pa·s/m³).
+
+<b>Mathematical Model:</b>
+For a truncated resonator, the impedance is computed using transmission line theory. For a cylindrical section:
+<br><br>
+<i>Z(ω) = Z_c·coth(γ·L)</i>
+<br><br>
+where:
+<ul>
+<li><i>Z_c = ρ₀·c₀/A</i> is the characteristic impedance</li>
+<li><i>γ = j·k</i> is the propagation constant (lossless case)</li>
+<li><i>k = ω/c₀</i> is the wavenumber</li>
+<li><i>L</i> is the truncated length</li>
+</ul>
+
+For a conical bore, the impedance follows Webster's horn equation, leading to Bessel function solutions.
+
+<b>Physical Interpretation:</b>
+• <b>Deep minima:</b> Indicate strong resonances (low impedance = high admittance)
+• <b>Minimum shifts:</b> Show how resonance frequencies change with length
+• <b>Curve shape:</b> Reveals resonator characteristics (conicity, losses, end effects)
+
+The resonance frequencies correspond to:
+<br><br>
+<i>f_n = argmin_f |Z(f)|</i>
+<br><br>
+where the impedance magnitude reaches local minima.
+
+<b>Axes:</b>
+• <b>X-axis:</b> Frequency (Hz)
+• <b>Y-axis:</b> Impedance magnitude (dB)
+
+<b>Acoustic Significance:</b>
+This visualization allows comparing how resonator length affects the complete frequency response, providing a comprehensive view of acoustic behavior. The overlay format facilitates identification of trends and optimal length ranges.
+            """
+        }
+        
+        info_text = info_texts.get(graph_type, "Información no disponible para este gráfico.")
+        
+        # Crear diálogo con información
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Información del Gráfico")
+        dialog.setMinimumSize(600, 500)
+        
+        layout = QVBoxLayout(dialog)
+        
+        # Área de texto con scroll
+        text_edit = QTextEdit()
+        text_edit.setReadOnly(True)
+        text_edit.setHtml(f"<div style='padding: 15px; font-size: 11pt; line-height: 1.6;'>{info_text}</div>")
+        layout.addWidget(text_edit)
+        
+        # Botón de cerrar
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok)
+        button_box.accepted.connect(dialog.accept)
+        layout.addWidget(button_box)
+        
+        dialog.exec_()
     
     def _update_analysis_plots(self):
         """Actualiza gráficos de análisis usando PlotUpdater."""

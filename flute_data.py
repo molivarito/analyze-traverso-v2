@@ -1,5 +1,20 @@
+"""
+Módulo central de datos de flauta.
+
+Representa la geometría interna medida de una flauta de varias partes y la
+convierte en estructuras listas para análisis acústico con OpenWind.
+
+Convenciones importantes:
+- Los agujeros cilíndricos se representan con un número (diámetro interno en mm).
+- Los agujeros cónicos se representan con una lista de dos números
+  [diam_out_mm, diam_in_mm], donde diam_out_mm es el diámetro en la superficie
+  externa y diam_in_mm el diámetro en la superficie interna.
+
+Esta convención se utiliza en todo el módulo para validación, generación de
+geometría de agujeros y cálculo de espesores de muro.
+"""
+
 import json
-import tempfile # Not currently used, but kept for potential future use
 from pathlib import Path
 from typing import Any, Dict, List, Union, Optional, Tuple # Added Union, Optional, Tuple
 import numpy as np
@@ -40,6 +55,22 @@ class FluteDataInitializationError(ValueError):
     pass
 
 class FluteData:
+    """
+    Contenedor de datos geométricos y acústicos de una flauta.
+
+    Esta clase:
+    - Carga datos de geometría interna desde JSON en disco o desde Notion.
+    - Valida y normaliza los datos por parte (headjoint, left, right, foot).
+    - Combina las mediciones en un único perfil acústico (`combined_measurements`)
+      siguiendo la lógica de ensamblaje físico.
+    - Prepara la geometría para OpenWind y, opcionalmente, calcula el análisis
+      acústico (`acoustic_analysis`) usando `ImpedanceComputation`.
+
+    Los agujeros cilíndricos se representan con un número (diámetro en mm) y
+    los cónicos con una lista `[diam_out_mm, diam_in_mm]`. Esta representación
+    se mantiene coherente en todo el flujo: validación, generación de inputs de
+    OpenWind y cálculo del espesor de muro.
+    """
     def __init__(self,
                  source: Union[str, Dict[str, Any]],
                  source_name: Optional[str] = None,
@@ -159,6 +190,20 @@ class FluteData:
                     self.validation_errors.append({'message': f"Error general al inicializar FluteData: {e_init}"})
 
     def get_openwind_geometry_inputs(self) -> Tuple[List[List[Union[float, str]]], List[List[Any]], List[List[str]]]:
+        """
+        Genera las entradas de geometría para OpenWind.
+
+        Returns:
+            Una tupla con:
+            - bore_segments_m_radius: lista de segmentos del taladro en metros
+              [[x_start, x_end, r_start, r_end, 'linear'], ...], con x relativo
+              al corcho y radios en metros.
+            - side_holes_for_openwind: lista de agujeros laterales en el formato
+              esperado por OpenWind. Los agujeros cilíndricos usan un diámetro
+              único y los cónicos usan la convención [diam_out_mm, diam_in_mm].
+            - fing_chart_parsed: tabla de digitaciones filtrada y ampliada para
+              incluir todos los agujeros geométricos.
+        """
         if self.validation_errors:
             logger.error(f"No se pueden generar inputs de OpenWind para {self.flute_model} debido a errores de validación previos.")
             return [], [], []
@@ -465,6 +510,19 @@ class FluteData:
 
 
     def _read_json_data_from_files(self, base_dir: str) -> None:
+        """
+        Carga datos de geometría interna desde archivos JSON individuales por parte.
+
+        Espera encontrar, en el directorio base, archivos como:
+        - headjoint.json
+        - left.json
+        - right.json
+        - foot.json
+
+        Cada archivo debe contener al menos 'Total length', 'Mortise length',
+        una lista de 'measurements' para el taladro interno y, opcionalmente,
+        especificaciones de agujeros cilíndricos o cónicos.
+        """
         logger.info(f"Leyendo datos JSON desde archivos en: {base_dir} para {self.flute_model}")
         loaded_data_for_parts: Dict[str, Any] = {}
         for part in FLUTE_PARTS_ORDER:
@@ -504,6 +562,14 @@ class FluteData:
 
 
     def _read_json_data_from_notion(self, notion_token: str, database_id: str, flute_name_filter: str) -> None:
+        """
+        Carga datos de geometría interna desde una base de datos de Notion.
+
+        Usa `get_json_files_from_notion` para recuperar un mapa parte→JSON y
+        aplica las mismas convenciones de nombres de partes definidas en
+        `FLUTE_PARTS_ORDER`. El nombre de modelo de flauta se toma de la
+        headjoint si está disponible, o del filtro de búsqueda.
+        """
         logger.info(f"Leyendo datos JSON desde Notion para la flauta: {flute_name_filter}")
         try:
             retrieved_data_map = get_json_files_from_notion(notion_token, database_id, flute_name_filter)
@@ -535,6 +601,16 @@ class FluteData:
             raise ValueError(f"Error al obtener datos de Notion: {e}")
 
     def _get_diameter_from_measurements_at_pos(self, measurements_list: List[Dict[str, float]], target_pos_mm: float) -> float:
+        """
+        Interpola (o extrapola suavemente) el diámetro interno del bore en una posición dada.
+
+        Args:
+            measurements_list: lista de mediciones con claves 'position' y 'diameter'.
+            target_pos_mm: posición objetivo en mm, relativa al inicio físico de la parte.
+
+        Returns:
+            Diámetro interno interpolado en mm. Devuelve 0.0 si los datos son insuficientes.
+        """
         if not measurements_list:
             logger.warning(f"No hay mediciones en measurements_list para interpolar diámetro en {self.flute_model} para pos {target_pos_mm}.")
             return 0.0
@@ -613,6 +689,21 @@ class FluteData:
         return wall_thickness
 
     def _validate_loaded_data(self):
+        """
+        Valida y normaliza los datos cargados para cada parte de la flauta.
+
+        Comprueba la consistencia de:
+        - 'Total length' y 'Mortise length'.
+        - Listas de 'measurements' (posiciones ordenadas, diámetros positivos).
+        - Listas de agujeros ('Holes position', 'Holes diameter' y propiedades
+          derivadas como 'Holes chimney' y 'Holes diameter_out').
+
+        También:
+        - Acepta agujeros cilíndricos (número) y cónicos ([diam_out, diam_in]).
+        - Calcula `_calculated_stopper_absolute_position_mm` para la headjoint
+          cuando no está disponible (por ejemplo, al cargar desde JSON).
+        - Rellena `validation_errors` y `validation_warnings` según sea necesario.
+        """
         self.validation_errors.clear()
         self.validation_warnings.clear()
         if not self.data:
@@ -788,6 +879,21 @@ class FluteData:
                      self.validation_warnings.append({'part': part_name, 'message': f"Parte '{part_name}': '{stopper_rel_pos_key}' especificado, pero no hay datos de embocadura para calcular su posición absoluta."})
 
     def combine_measurements(self) -> List[Dict[str, float]]:
+        """
+        Combina las mediciones internas de todas las partes en un único perfil acústico.
+
+        El perfil resultante:
+        - Está referenciado al inicio físico de la headjoint.
+        - Respeta la forma en que las partes se ensamblan (mortises, sockets, etc.).
+        - Añade puntos de inicio y fin acústico por parte para que los gráficos y
+          OpenWind puedan representar correctamente los escalones de diámetro.
+
+        Returns:
+            Lista ordenada de diccionarios con:
+            - 'position': posición absoluta en mm a lo largo del eje de la flauta.
+            - 'diameter': diámetro interno en mm.
+            - 'source_part_name' y 'source_relative_position' para trazabilidad.
+        """
         if self.validation_errors:
             logger.error(f"Saltando combine_measurements para {self.flute_model} debido a errores de validación.")
             return []

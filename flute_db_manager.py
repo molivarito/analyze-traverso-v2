@@ -33,18 +33,37 @@ class FluteDBManager:
         
         Args:
             db_path: Ruta al archivo de base de datos. Si es None, usa la ruta por defecto.
+        
+        Raises:
+            sqlite3.OperationalError: Si hay un error de I/O o acceso a la base de datos.
         """
         self.db_path = db_path
         if db_path is None:
             from db_schema import DEFAULT_DB_PATH
             self.db_path = DEFAULT_DB_PATH
         
-        # Asegurar que la base de datos existe
-        create_database_schema(self.db_path)
+        # Asegurar que la base de datos existe (con manejo de errores)
+        try:
+            create_database_schema(self.db_path)
+        except sqlite3.OperationalError as e:
+            logger.error(f"Error inicializando base de datos en {self.db_path}: {e}")
+            raise
     
     def _get_connection(self) -> sqlite3.Connection:
-        """Obtiene una conexión a la base de datos."""
-        return get_database_connection(self.db_path)
+        """
+        Obtiene una conexión a la base de datos.
+        
+        Returns:
+            Conexión SQLite.
+        
+        Raises:
+            sqlite3.OperationalError: Si hay un error de I/O o acceso a la base de datos.
+        """
+        try:
+            return get_database_connection(self.db_path)
+        except sqlite3.OperationalError as e:
+            logger.error(f"Error obteniendo conexión a la base de datos: {e}")
+            raise
     
     def _calculate_params_hash(
         self,
@@ -940,4 +959,215 @@ class FluteDBManager:
             Diccionario con geometría de todas las partes.
         """
         return self.get_flute_geometry(flute_id)
+    
+    def create_sensitivity_run(
+        self,
+        base_flute_id: int,
+        parameter_name: str,
+        min_value: float,
+        max_value: float,
+        num_steps: int,
+        target_part: Optional[str] = None,
+        target_hole: Optional[int] = None,
+        description: Optional[str] = None
+    ) -> int:
+        """
+        Crea un nuevo run de análisis de sensibilidad.
+        
+        Args:
+            base_flute_id: ID de la flauta base.
+            parameter_name: Nombre del parámetro variado.
+            min_value: Valor mínimo del parámetro.
+            max_value: Valor máximo del parámetro.
+            num_steps: Número de pasos en el análisis.
+            target_part: Parte específica (si aplica).
+            target_hole: Agujero específico (si aplica).
+            description: Descripción opcional del análisis.
+        
+        Returns:
+            ID del run creado.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                INSERT INTO sensitivity_analysis_runs
+                (base_flute_id, parameter_name, min_value, max_value, num_steps,
+                 target_part, target_hole, description)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                base_flute_id,
+                parameter_name,
+                min_value,
+                max_value,
+                num_steps,
+                target_part,
+                target_hole,
+                description
+            ))
+            
+            run_id = cursor.lastrowid
+            conn.commit()
+            logger.info(f"Run de análisis de sensibilidad creado: ID {run_id}")
+            return run_id
+        except sqlite3.Error as e:
+            logger.error(f"Error creando run de análisis de sensibilidad: {e}")
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+    
+    def save_sensitivity_variant(
+        self,
+        run_id: int,
+        parameter_value: float,
+        variant_name: str,
+        calculation_params_id: Optional[int] = None
+    ) -> int:
+        """
+        Guarda una variante de análisis de sensibilidad.
+        
+        Args:
+            run_id: ID del run de análisis.
+            parameter_value: Valor del parámetro para esta variante.
+            variant_name: Nombre de la variante.
+            calculation_params_id: ID de los parámetros de cálculo (opcional).
+        
+        Returns:
+            ID de la variante creada.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                INSERT OR REPLACE INTO sensitivity_variants
+                (run_id, parameter_value, variant_name, calculation_params_id)
+                VALUES (?, ?, ?, ?)
+            """, (
+                run_id,
+                parameter_value,
+                variant_name,
+                calculation_params_id
+            ))
+            
+            variant_id = cursor.lastrowid
+            conn.commit()
+            logger.debug(f"Variante guardada: {variant_name} (ID: {variant_id})")
+            return variant_id
+        except sqlite3.Error as e:
+            logger.error(f"Error guardando variante de sensibilidad: {e}")
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+    
+    def delete_sensitivity_run(self, run_id: int) -> None:
+        """
+        Elimina un run completo de análisis de sensibilidad y todas sus variantes.
+        
+        Args:
+            run_id: ID del run a eliminar.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            # Las variantes se eliminan automáticamente por CASCADE
+            cursor.execute("DELETE FROM sensitivity_analysis_runs WHERE run_id = ?", (run_id,))
+            conn.commit()
+            logger.info(f"Run de análisis de sensibilidad {run_id} eliminado")
+        except sqlite3.Error as e:
+            logger.error(f"Error eliminando run de sensibilidad: {e}")
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+    
+    def get_sensitivity_runs(self, base_flute_id: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Obtiene todos los runs de análisis de sensibilidad.
+        
+        Args:
+            base_flute_id: Si se proporciona, filtra por flauta base.
+        
+        Returns:
+            Lista de diccionarios con información de los runs.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            if base_flute_id is not None:
+                cursor.execute("""
+                    SELECT run_id, base_flute_id, parameter_name, min_value, max_value,
+                           num_steps, target_part, target_hole, created_at, description
+                    FROM sensitivity_analysis_runs
+                    WHERE base_flute_id = ?
+                    ORDER BY created_at DESC
+                """, (base_flute_id,))
+            else:
+                cursor.execute("""
+                    SELECT run_id, base_flute_id, parameter_name, min_value, max_value,
+                           num_steps, target_part, target_hole, created_at, description
+                    FROM sensitivity_analysis_runs
+                    ORDER BY created_at DESC
+                """)
+            
+            runs = []
+            for row in cursor.fetchall():
+                runs.append({
+                    'run_id': row['run_id'],
+                    'base_flute_id': row['base_flute_id'],
+                    'parameter_name': row['parameter_name'],
+                    'min_value': row['min_value'],
+                    'max_value': row['max_value'],
+                    'num_steps': row['num_steps'],
+                    'target_part': row['target_part'],
+                    'target_hole': row['target_hole'],
+                    'created_at': row['created_at'],
+                    'description': row['description']
+                })
+            
+            return runs
+        finally:
+            conn.close()
+    
+    def get_sensitivity_variants(self, run_id: int) -> List[Dict[str, Any]]:
+        """
+        Obtiene todas las variantes de un run de análisis de sensibilidad.
+        
+        Args:
+            run_id: ID del run.
+        
+        Returns:
+            Lista de diccionarios con información de las variantes.
+        """
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        
+        try:
+            cursor.execute("""
+                SELECT variant_id, run_id, parameter_value, variant_name,
+                       calculation_params_id, created_at
+                FROM sensitivity_variants
+                WHERE run_id = ?
+                ORDER BY parameter_value
+            """, (run_id,))
+            
+            variants = []
+            for row in cursor.fetchall():
+                variants.append({
+                    'variant_id': row['variant_id'],
+                    'run_id': row['run_id'],
+                    'parameter_value': row['parameter_value'],
+                    'variant_name': row['variant_name'],
+                    'calculation_params_id': row['calculation_params_id'],
+                    'created_at': row['created_at']
+                })
+            
+            return variants
+        finally:
+            conn.close()
 

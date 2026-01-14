@@ -37,12 +37,19 @@ logger = logging.getLogger(__name__)
 
 class FluteDataDB(FluteData):
     """
-    Extensión de FluteData que usa base de datos para cachear resultados.
+    Extensión de FluteData que usa base de datos para cachear resultados acústicos
+    y gestionar geometría externa.
     
-    Mantiene la misma interfaz que FluteData pero:
-    - Guarda resultados en BD después de calcular
-    - Carga resultados desde BD si existen
-    - Recalcula solo si los parámetros cambian
+    Mantiene la misma interfaz que FluteData pero además:
+    - Guarda geometría y resultados de cálculo en la BD después de calcular.
+    - Carga resultados desde la BD si existen para un conjunto de parámetros dado.
+    - Recalcula solo si los parámetros de cálculo cambian o se fuerza el recálculo.
+    
+    Nota:
+        Esta clase puede funcionar sin gestor de BD (`db_manager=None`), en cuyo
+        caso se comporta como un `FluteData` enriquecido que NO persiste nada en
+        la base de datos. Esto es útil, por ejemplo, para variantes temporales
+        generadas en análisis de sensibilidad.
     """
     
     def __init__(
@@ -58,7 +65,9 @@ class FluteDataDB(FluteData):
         db_path: Optional[Path] = None,
         force_recalculate: bool = False,
         db_manager: Optional['FluteDBManager'] = None,  # Permitir pasar un DB Manager existente
-        include_pressure_flow: bool = False  # Controlar si se guardan datos de presión/flujo
+        include_pressure_flow: bool = False,  # Controlar si se guardan datos de presión/flujo
+        is_sensitivity_variant: bool = False,  # NUEVO: Si True, es variante de análisis de sensibilidad
+        sensitivity_run_id: Optional[int] = None  # NUEVO: ID del run de análisis de sensibilidad
     ):
         """
         Inicializa FluteDataDB.
@@ -76,7 +85,23 @@ class FluteDataDB(FluteData):
             force_recalculate: Si True, fuerza recálculo incluso si existe en BD.
             db_manager: Gestor de BD existente (opcional). Si es None, intenta crear uno.
             include_pressure_flow: Si True, guarda datos de presión/flujo en BD (aumenta tamaño significativamente).
+            is_sensitivity_variant: Si True, esta flauta es una variante de análisis de sensibilidad.
+                                    Esto previene que se guarde en la tabla principal de flautas.
+            sensitivity_run_id: ID del run de análisis de sensibilidad (si aplica).
         """
+        # NUEVO: Si es variante de sensibilidad, forzar db_manager=None para la tabla principal
+        # pero permitir guardar en tabla de sensibilidad si se proporciona run_id
+        self.is_sensitivity_variant = is_sensitivity_variant
+        self.sensitivity_run_id = sensitivity_run_id
+        
+        # Si es variante, no usar db_manager para la tabla principal
+        if is_sensitivity_variant:
+            # Guardar referencia al db_manager original si existe (para tabla de sensibilidad)
+            self._original_db_manager = db_manager
+            db_manager = None  # No guardar en tabla principal
+        else:
+            self._original_db_manager = None
+        
         # Inicializar gestor de base de datos
         if db_manager is not None:
             self.db_manager = db_manager
@@ -90,6 +115,7 @@ class FluteDataDB(FluteData):
         self.force_recalculate = force_recalculate
         self.include_pressure_flow = include_pressure_flow  # Guardar preferencia
         self._calc_params_id: Optional[int] = None
+        self._flute_db_id: Optional[int] = None  # Inicializar _flute_db_id
         self.source = source  # Guardar source para uso posterior
         
         # Si fing_chart_file es None, usar el valor por defecto de FluteData
@@ -103,8 +129,10 @@ class FluteDataDB(FluteData):
             source_path = Path(source)
             # Intentar obtener el nombre de la flauta desde el directorio o source_name
             flute_name_for_lookup = source_name or source_path.name
-            existing_flute_id = self.db_manager.get_flute_id(flute_name_for_lookup)
-            if existing_flute_id is not None:
+            existing_flute_id = None
+            if self.db_manager is not None:
+                existing_flute_id = self.db_manager.get_flute_id(flute_name_for_lookup)
+            if existing_flute_id is not None and self.db_manager is not None:
                 # Cargar geometría existente para obtener posición del corcho
                 existing_geometry = self.db_manager.get_flute_geometry(existing_flute_id)
                 headjoint_data_existing = existing_geometry.get(FLUTE_PARTS_ORDER[0], {})
@@ -210,6 +238,11 @@ class FluteDataDB(FluteData):
             self.external_geometry: Dict[str, List[Dict[str, float]]] = {}
         
         # Intentar cargar desde BD
+        if self.db_manager is None:
+            logger.debug(f"No hay DB Manager para {self.flute_model}, generando geometría externa sin guardar...")
+            self._generate_external_geometry()
+            return
+        
         external_geom_from_db = self.db_manager.get_external_geometry(self._flute_db_id)
         
         for part_name in FLUTE_PARTS_ORDER:
@@ -245,7 +278,8 @@ class FluteDataDB(FluteData):
                 
                 if external_measurements:
                     # Guardar en BD
-                    self.db_manager.save_external_geometry(
+                    if self.db_manager is not None and self._flute_db_id is not None:
+                        self.db_manager.save_external_geometry(
                         flute_id=self._flute_db_id,
                         part_name=part_name,
                         external_measurements=external_measurements,
@@ -272,7 +306,9 @@ class FluteDataDB(FluteData):
             return
         
         # Obtener parámetros de modelo paramétrico desde BD o usar defaults
-        params = self.db_manager.get_external_geometry_parameters(self._flute_db_id, part_name)
+        params = None
+        if self.db_manager is not None and self._flute_db_id is not None:
+            params = self.db_manager.get_external_geometry_parameters(self._flute_db_id, part_name)
         
         if params:
             wall_thickness_type = params['wall_thickness_type']
@@ -298,7 +334,7 @@ class FluteDataDB(FluteData):
             external_measurements = modeler.generate_external_profile()
             
             # Guardar en BD
-            if self._flute_db_id:
+            if self._flute_db_id and self.db_manager is not None:
                 self.db_manager.save_external_geometry(
                     flute_id=self._flute_db_id,
                     part_name=part_name,
@@ -385,7 +421,7 @@ class FluteDataDB(FluteData):
             logger.warning(f"Error leyendo archivo de digitaciones: {e}")
         
         # Buscar cálculo existente
-        if not self.force_recalculate:
+        if not self.force_recalculate and self.db_manager is not None:
             logger.info(f"Buscando cálculo existente para {self.flute_model} (flute_id={self._flute_db_id}, temp={temperature}, la={la_frequency})...")
             existing_calc_id = self.db_manager.find_existing_calculation(
                 flute_id=self._flute_db_id,
@@ -419,6 +455,10 @@ class FluteDataDB(FluteData):
         """
         try:
             logger.info(f"[{self.flute_model}] Cargando resultados desde BD (calc_params_id={calc_params_id})...")
+            if self.db_manager is None:
+                logger.warning(f"[{self.flute_model}] No hay DB Manager, no se puede cargar desde BD")
+                return
+            
             # Cargar resultados desde BD
             impedance_caches = self.db_manager.load_impedance_results(calc_params_id)
             logger.info(f"[{self.flute_model}] {len(impedance_caches)} resultados cargados desde BD")
@@ -574,24 +614,133 @@ class FluteDataDB(FluteData):
                     logger.warning(f"Error leyendo archivo de digitaciones para guardar: {e}")
                 
                 # Guardar en BD (usar preferencia del usuario)
-                self._calc_params_id = self.db_manager.save_impedance_calculation(
-                    flute_id=self._flute_db_id,
-                    temperature=temperature,
-                    la_frequency=la_frequency,
-                    freq_range=freq_range,
-                    fing_chart_file=self.fing_chart_file_path or "",
-                    fing_chart_content=fing_chart_content,
-                    stopper_offset_m=stopper_offset_m,
-                    embouchure_radius_m=Rw,
-                    bore_segments=bore_segments,
-                    side_holes=side_holes,
-                    combined_measurements=self.combined_measurements,
-                    impedance_results=self.acoustic_analysis,
-                    include_pressure_flow=self.include_pressure_flow  # Usar preferencia guardada
-                )
-                
-                logger.info(f"Análisis acústico guardado en BD para {self.flute_model}")
+                # NUEVO: No guardar en tabla principal si es variante de sensibilidad
+                if self.db_manager is not None and not self.is_sensitivity_variant:
+                    self._calc_params_id = self.db_manager.save_impedance_calculation(
+                        flute_id=self._flute_db_id,
+                        temperature=temperature,
+                        la_frequency=la_frequency,
+                        freq_range=freq_range,
+                        fing_chart_file=self.fing_chart_file_path or "",
+                        fing_chart_content=fing_chart_content,
+                        stopper_offset_m=stopper_offset_m,
+                        embouchure_radius_m=Rw,
+                        bore_segments=bore_segments,
+                        side_holes=side_holes,
+                        combined_measurements=self.combined_measurements,
+                        impedance_results=self.acoustic_analysis,
+                        include_pressure_flow=self.include_pressure_flow  # Usar preferencia guardada
+                    )
+                    
+                    logger.info(f"Análisis acústico guardado en BD para {self.flute_model}")
+                    
+                    # NUEVO: Si es variante y tenemos run_id, guardar en tabla de sensibilidad
+                    if self.is_sensitivity_variant and self.sensitivity_run_id is not None and self._original_db_manager is not None:
+                        try:
+                            self._original_db_manager.save_sensitivity_variant(
+                                run_id=self.sensitivity_run_id,
+                                parameter_value=getattr(self, '_sensitivity_parameter_value', 0.0),
+                                variant_name=self.flute_model,
+                                calculation_params_id=self._calc_params_id
+                            )
+                            logger.debug(f"Variante {self.flute_model} guardada en tabla de sensibilidad")
+                        except Exception as e:
+                            logger.warning(f"Error guardando variante en tabla de sensibilidad: {e}")
+                elif self.is_sensitivity_variant:
+                    logger.debug(f"[{self.flute_model}] Es variante de sensibilidad, no guardando en tabla principal")
+                else:
+                    logger.info(f"Sin DB Manager, análisis acústico no guardado en BD para {self.flute_model}")
             except Exception as e:
                 logger.error(f"Error guardando análisis acústico en BD: {e}", exc_info=True)
                 # No fallar si no se puede guardar, el cálculo ya se hizo
+    
+    def find_flute_plans(self) -> Dict[str, Any]:
+        """
+        Busca planos y diagramas en el directorio de la flauta.
+        
+        Busca archivos PDF e imágenes (PNG, JPG, JPEG) siguiendo la convención:
+        - Planos generales: plano.pdf, plan.pdf, drawing.pdf, blueprint.pdf (y sus versiones en imagen)
+        - Planos por parte: {part}_plan.pdf, {part}-plan.pdf (y versiones en imagen)
+        
+        Returns:
+            Diccionario con:
+            - 'general_plan': Path al plano general (si existe)
+            - 'part_plans': Dict con planos por parte {part_name: Path}
+            - 'all_plans': Lista de todos los planos encontrados
+        """
+        plans = {
+            'general_plan': None,
+            'part_plans': {},
+            'all_plans': []
+        }
+        
+        # Determinar directorio de la flauta
+        flute_dir = None
+        if isinstance(self.source, (str, Path)):
+            source_path = Path(self.source)
+            if source_path.is_dir():
+                flute_dir = source_path
+            elif source_path.is_file():
+                flute_dir = source_path.parent
+        elif isinstance(self.source, dict):
+            # Si source es un diccionario, intentar obtener ruta desde json_source_path
+            # o desde el nombre de la flauta
+            if hasattr(self, 'json_source_path') and self.json_source_path:
+                flute_dir = Path(self.json_source_path).parent
+            else:
+                # Intentar construir ruta desde el nombre de la flauta
+                from db_schema import DEFAULT_DB_PATH
+                data_json_dir = DEFAULT_DB_PATH.parent.parent / "data_json"
+                if data_json_dir.exists():
+                    flute_dir = data_json_dir / self.flute_model
+        
+        if not flute_dir or not flute_dir.exists():
+            logger.debug(f"No se pudo determinar directorio de flauta para buscar planos: {self.flute_model}")
+            return plans
+        
+        # Extensiones a buscar
+        pdf_extensions = ['.pdf']
+        image_extensions = ['.png', '.jpg', '.jpeg']
+        all_extensions = pdf_extensions + image_extensions
+        
+        # Nombres de planos generales (en orden de prioridad)
+        general_names = ['plano', 'plan', 'drawing', 'blueprint']
+        
+        # Buscar plano general
+        for name in general_names:
+            for ext in all_extensions:
+                plan_path = flute_dir / f"{name}{ext}"
+                if plan_path.exists() and plan_path.is_file():
+                    plans['general_plan'] = plan_path
+                    plans['all_plans'].append(plan_path)
+                    logger.debug(f"Plano general encontrado: {plan_path}")
+                    break
+            if plans['general_plan']:
+                break
+        
+        # Buscar planos por parte
+        from constants import FLUTE_PARTS_ORDER
+        for part in FLUTE_PARTS_ORDER:
+            # Intentar diferentes variaciones de nombre
+            part_variations = [
+                f"{part}_plan",
+                f"{part}-plan",
+                f"{part}_drawing",
+                f"{part}-drawing"
+            ]
+            
+            for part_name_variant in part_variations:
+                for ext in all_extensions:
+                    plan_path = flute_dir / f"{part_name_variant}{ext}"
+                    if plan_path.exists() and plan_path.is_file():
+                        plans['part_plans'][part] = plan_path
+                        if plan_path not in plans['all_plans']:
+                            plans['all_plans'].append(plan_path)
+                        logger.debug(f"Plano de {part} encontrado: {plan_path}")
+                        break
+                if part in plans['part_plans']:
+                    break
+        
+        logger.info(f"Planos encontrados para {self.flute_model}: {len(plans['all_plans'])} archivo(s)")
+        return plans
 

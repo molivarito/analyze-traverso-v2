@@ -11,7 +11,7 @@ Total de flautas procesadas: 28
 ESTADÍSTICAS
 --------------------------------------------------------------------------------
 Flautas con errores: 0
-Flautas con advertencias: 16
+Flautas con advertencias: 26
 Flautas con geometría externa faltante: 0
 
 ================================================================================
@@ -22,10 +22,10 @@ DETALLE POR FLAUTA
 [1/28] Bizey
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 4
+ID en BD: 2
 
 ⚠️  ADVERTENCIAS:
-  • headjoint: Parte 'headjoint', agujero 1: Diámetro elíptico (8.05x7.40mm) interpretado. Usando diámetro circular equivalente: 7.72mm.
+  • headjoint: Parte 'headjoint', agujero 1: Overcut detectado (diam_in=7.40 < diam_out=8.05). Esto es menos común que undercut.
   • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -19.05mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 29.95mm.
 
 📊 Notas calculadas: 7
@@ -59,6 +59,9 @@ ID en BD: 1
 Estado: ✓ Cargada exitosamente
 ID en BD: 3
 
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -20.30mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 53.25mm.
+
 📊 Notas calculadas: 7
 
 📦 ESTADO DE PARTES:
@@ -71,7 +74,10 @@ ID en BD: 3
 [4/28] Grenser-Montero
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 7
+ID en BD: 4
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.00mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 43.55mm.
 
 📊 Notas calculadas: 7
 
@@ -85,7 +91,7 @@ ID en BD: 7
 [5/28] Grenser
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 8
+ID en BD: 5
 
 ⚠️  ADVERTENCIAS:
   • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -17.97mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 36.58mm.
@@ -105,7 +111,10 @@ ID en BD: 8
 [6/28] Grenser-Weemaels
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 2
+ID en BD: 6
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.89mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 41.56mm.
 
 📊 Notas calculadas: 7
 
@@ -122,7 +131,10 @@ ID en BD: 2
 [7/28] Heinrich v1
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 9
+ID en BD: 7
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.14mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 52.36mm.
 
 📊 Notas calculadas: 7
 
@@ -136,7 +148,10 @@ ID en BD: 9
 [8/28] Heinrich v2
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 10
+ID en BD: 8
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.14mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 52.36mm.
 
 📊 Notas calculadas: 7
 
@@ -150,7 +165,10 @@ ID en BD: 10
 [9/28] Kirst v1
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 11
+ID en BD: 9
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.30mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 47.20mm.
 
 📊 Notas calculadas: 7
 
@@ -164,7 +182,7 @@ ID en BD: 11
 [10/28] Kirst v2 A 440hz
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 12
+ID en BD: 10
 
 ⚠️  ADVERTENCIAS:
   • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.30mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 47.20mm.
@@ -181,7 +199,7 @@ ID en BD: 12
 [11/28] Lot v1 A 415hz
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 13
+ID en BD: 11
 
 ⚠️  ADVERTENCIAS:
   • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.50mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 45.10mm.
@@ -198,7 +216,7 @@ ID en BD: 13
 [12/28] Lot v2 A 425 a 430hz
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 14
+ID en BD: 12
 
 ⚠️  ADVERTENCIAS:
   • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.50mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 45.10mm.
@@ -216,7 +234,7 @@ ID en BD: 14
 [13/28] Lot v3 A 440hz
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 15
+ID en BD: 13
 
 ⚠️  ADVERTENCIAS:
   • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.50mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 45.10mm.
@@ -233,7 +251,7 @@ ID en BD: 15
 [14/28] Oberlender A 410 - 415hz
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 16
+ID en BD: 14
 
 ⚠️  ADVERTENCIAS:
   • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -19.91mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 32.09mm.
@@ -250,7 +268,7 @@ ID en BD: 16
 [15/28] Palanca
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 17
+ID en BD: 15
 
 📊 Notas calculadas: 7
 
@@ -267,7 +285,10 @@ ID en BD: 17
 [16/28] Quantz Baudin v1
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 5
+ID en BD: 16
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -20.24mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 54.06mm.
 
 📊 Notas calculadas: 7
 
@@ -281,7 +302,7 @@ ID en BD: 5
 [17/28] Quantz Baudin v2 A 395hz
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
-ID en BD: 6
+ID en BD: 17
 
 ⚠️  ADVERTENCIAS:
   • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -20.24mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 54.06mm.
@@ -410,6 +431,9 @@ ID en BD: 22
 Estado: ✓ Cargada exitosamente
 ID en BD: 23
 
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -19.50mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 38.50mm.
+
 📊 Notas calculadas: 7
 
 📦 ESTADO DE PARTES:
@@ -424,6 +448,9 @@ ID en BD: 23
 Estado: ✓ Cargada exitosamente
 ID en BD: 24
 
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -18.90mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 42.60mm.
+
 📊 Notas calculadas: 7
 
 📦 ESTADO DE PARTES:
@@ -437,6 +464,9 @@ ID en BD: 24
 --------------------------------------------------------------------------------
 Estado: ✓ Cargada exitosamente
 ID en BD: 25
+
+⚠️  ADVERTENCIAS:
+  • headjoint: Parte 'headjoint': 'Stopper Position Relative to Embouchure Center (mm)' no especificado o inválido. Calculando por defecto: -19.20mm (un diámetro de tubo en embocadura) desde el centro de la embocadura. Posición absoluta del corcho: 31.80mm.
 
 📊 Notas calculadas: 7
 

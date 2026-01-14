@@ -14,7 +14,6 @@ from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
 import matplotlib.pyplot as plt
 import logging
-from pathlib import Path
 import json
 import csv
 
@@ -27,6 +26,13 @@ logger = logging.getLogger(__name__)
 class FluteAnalyzer:
     """
     Analizador unificado de flautas que encapsula todos los análisis acústicos.
+
+    Esta clase actúa como capa de alto nivel sobre los resultados de
+    `FluteData` / `FluteDataDB`:
+    - Agrega, por flauta, los objetos de `acoustic_analysis` (ImpedanceComputation).
+    - Calcula métricas numéricas derivadas (inharmonicidad, MOC, B_I, ESPE, etc.).
+    - Genera figuras de resumen listas para integrarse en la GUI y en reportes PDF.
+    - Exporta los resultados a formatos CSV/JSON y a un reporte PDF multi‑página.
     """
     
     def __init__(self, flute_data_list: List[Any], flute_operations_list: Optional[List[FluteOperations]] = None):
@@ -50,7 +56,16 @@ class FluteAnalyzer:
         self._prepare_analysis_data()
     
     def _prepare_analysis_data(self) -> None:
-        """Prepara los datos para análisis."""
+        """
+        Extrae y organiza los datos necesarios para los análisis.
+
+        - Construye `acoustic_analysis_list` como lista de tuplas
+          (dict_de_nota→objeto_de_impedancia, nombre_de_flauta).
+        - Construye `finger_frequencies_map` con las frecuencias objetivo
+          por nota y por flauta.
+        - Determina un orden canónico de notas (`ordered_notes`) a partir
+          de todas las notas presentes en los análisis.
+        """
         for flute_data in self.flute_data_list:
             flute_name = flute_data.flute_model
             self.acoustic_analysis_list.append((flute_data.acoustic_analysis, flute_name))
@@ -133,10 +148,12 @@ class FluteAnalyzer:
                     antires = list(analysis_obj.antiresonance_frequencies())
                     if len(antires) >= 2:
                         f0, f1 = antires[0], antires[1]
+                        # Frecuencia de la octava superior (relación 2:1)
                         f_play_II = 2.0 * f_play_I
                         
                         if f0 > 0 and f1 > 0 and f_play_II > 0:
-                            # MOC = (f1 - f0) / (f_play_II - f_play_I)
+                            # MOC (Modal Octave Compression) = (f1 - f0) / (f_play_II - f_play_I)
+                            # Mide la compresión de la octava modal respecto a la octava teórica
                             moc = (f1 - f0) / (f_play_II - f_play_I)
                             flute_results[note] = moc
                         else:
@@ -161,6 +178,7 @@ class FluteAnalyzer:
         from constants import get_speed_of_sound
         
         results = {}
+        # Temperatura de referencia para velocidad del sonido (20°C estándar)
         speed_of_sound_ref = get_speed_of_sound(20.0)
         
         for analysis_dict, flute_name in self.acoustic_analysis_list:
@@ -185,13 +203,20 @@ class FluteAnalyzer:
                         espe = np.nan
                         
                         if f0 > 0:
+                            # Conversión a cents: 1200 cents = 1 octava (log2 ratio)
                             bi = 1200.0 * np.log2(f_play_I / f0)
                         
+                        # Cálculo de longitudes efectivas y diferencias para ESPE
+                        # delta_l_I: diferencia de longitud efectiva en modo fundamental
                         delta_l_I = (speed_of_sound_ref / 2.0) * ((1.0 / f_play_I) - (1.0 / f0)) if f0 > 0 else 0.0
+                        # delta_l_II: diferencia de longitud efectiva en modo de octava
                         delta_l_II = speed_of_sound_ref * ((1.0 / f_play_II) - (1.0 / f1)) if f1 > 0 and f_play_II > 0 else 0.0
                         delta_delta_l = delta_l_II - delta_l_I
+                        # Longitud efectiva del modo fundamental
                         L_eff_I = (speed_of_sound_ref / (2.0 * f_play_I))
                         
+                        # ESPE (Effective Sound Path Extension) en cents
+                        # Tolerancia numérica: 1e-9 para evitar división por cero
                         if L_eff_I > 0 and (L_eff_I + delta_delta_l) > 1e-9:
                             espe = 1200.0 * np.log2(L_eff_I / (L_eff_I + delta_delta_l))
                         
@@ -257,6 +282,17 @@ class FluteAnalyzer:
         )
     
     def plot_resonance_frequencies(self, reference_pitch: float = 415.0, ax: Optional[plt.Axes] = None) -> plt.Figure:
+        """
+        Genera gráfico de frecuencias de resonancia vs temperamento igual.
+        
+        Args:
+            reference_pitch: Frecuencia de referencia del La en Hz (por defecto 415 Hz, 
+                            diapasón barroco estándar).
+            ax: Eje de matplotlib (opcional).
+        
+        Returns:
+            Figura de matplotlib.
+        """
         """
         Genera gráfico de frecuencias de resonancia vs temperamento igual.
         
@@ -469,4 +505,34 @@ class FluteAnalyzer:
             plt.close(fig)
         
         logger.info(f"Reporte resumen generado: {output_path}")
+    
+    def create_resonator_truncation_analyzer(
+        self,
+        flute_index: int = 0,
+        truncation_percentages: Optional[List[float]] = None,
+        temperature: float = 20.0
+    ) -> Any:
+        """
+        Crea un analizador de resonador truncado para una flauta específica.
+        
+        Args:
+            flute_index: Índice de la flauta en flute_data_list (por defecto: 0).
+            truncation_percentages: Lista de porcentajes de truncamiento (opcional).
+            temperature: Temperatura en Celsius.
+        
+        Returns:
+            Instancia de ResonatorTruncationAnalyzer.
+        """
+        from resonator_truncation_analysis import ResonatorTruncationAnalyzer
+        
+        if flute_index >= len(self.flute_data_list):
+            raise IndexError(f"Índice de flauta {flute_index} fuera de rango (total: {len(self.flute_data_list)})")
+        
+        flute_data = self.flute_data_list[flute_index]
+        
+        return ResonatorTruncationAnalyzer(
+            flute_data=flute_data,
+            truncation_percentages=truncation_percentages,
+            temperature=temperature
+        )
 

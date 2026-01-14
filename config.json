@@ -1,0 +1,12 @@
+{
+  "_comment": "Pre-configured for macOS with Google Drive - User: pdelac",
+  "data_dir": "~/Library/CloudStorage/GoogleDrive-patodelac@gmail.com/My Drive/Main/3.-INVESTIGACION/codigo/software_en_uso/2025-Traverso-analysis/data_json",
+  "db_path": "~/.flute_analysis/flute_analysis.db",
+  "fingering_chart": "~/Library/CloudStorage/GoogleDrive-patodelac@gmail.com/My Drive/Main/3.-INVESTIGACION/codigo/software_en_uso/2025-Traverso-analysis/data_json/traverso_fingerchart.txt",
+  "_notes": {
+    "data_dir": "Apunta a tu Google Drive donde est\u00e1n todos los archivos JSON de flautas",
+    "db_path": "Base de datos compartida en ~/.flute_analysis/ (contiene resultados pre-calculados)",
+    "fingering_chart": "Archivo de digitaciones requerido por OpenWind",
+    "conda_env": "Recuerda activar: conda activate OpenWind"
+  }
+}

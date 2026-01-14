@@ -184,6 +184,14 @@ class FluteOperations:
     def plot_individual_parts(self, axes_list: Optional[List[plt.Axes]] = None,
                               figure_title: Optional[str] = None,
                               flute_color: Optional[str] = None) -> Tuple[plt.Figure, List[plt.Axes]]:
+        """
+        Dibuja, en subgráficos separados, el perfil interno de cada parte de la flauta.
+
+        Cada eje muestra:
+        - El perfil del taladro interno (diámetro vs posición relativa de la parte).
+        - La posición aproximada de los agujeros (se dibujan como marcadores sobre una línea
+          por debajo del bore para no interferir con el perfil).
+        """
 
         fig: plt.Figure
         ax_list_to_plot_on: List[plt.Axes]
@@ -249,6 +257,16 @@ class FluteOperations:
     def plot_all_parts_overlapping(self, ax: Optional[plt.Axes] = None,
                                    plot_label: Optional[str] = None,
                                    flute_color: Optional[str] = None, flute_style: Optional[str] = None) -> plt.Axes:
+        """
+        Dibuja todas las partes desplegadas secuencialmente en un único eje.
+
+        Muestra:
+        - El perfil interno de cada parte en su posición física acumulada.
+        - Los agujeros como marcadores bajo el perfil de cada parte.
+
+        Es útil para revisar rápidamente la continuidad del taladro y la distribución
+        de agujeros a lo largo de toda la flauta.
+        """
         fig: plt.Figure
         if ax is None:
             fig, ax = plt.subplots(figsize=(18, 6))
@@ -297,6 +315,18 @@ class FluteOperations:
                                  flute_color: Optional[str] = None, flute_style: Optional[str] = None,
                                  show_mortise_markers: bool = True,
                                  x_axis_origin_offset: float = 0.0) -> plt.Axes: # Nuevo parámetro
+        """
+        Dibuja el perfil acústico combinado de la flauta usando `combined_measurements`.
+
+        Características:
+        - El eje X está en coordenadas absolutas (mm) y puede desplazarse con
+          `x_axis_origin_offset` para alinear el origen con el corcho u otros
+          puntos de referencia.
+        - Cada segmento se colorea según la parte de origen (headjoint/left/right/foot).
+        - Opcionalmente muestra marcadores verticales para sockets y zonas de mortise
+          (`show_mortise_markers=True`), usando la misma lógica de ensamblaje que
+          el resto del sistema.
+        """
         fig: plt.Figure
         if ax is None:
             fig, ax = plt.subplots(figsize=(18, 6))
@@ -3604,3 +3634,254 @@ class FluteOperations:
 
         logger.info(f"Reporte PDF de resumen guardado en: {pdf_filename}")
         return pdf_filename
+    
+    @staticmethod
+    def plot_resonator_truncation_frequencies(
+            truncation_results: Dict[float, Dict[str, Any]],
+            ax: Optional[plt.Axes] = None,
+            base_colors: List[str] = BASE_COLORS
+        ) -> plt.Figure:
+        """
+        Grafica las frecuencias de resonancia vs. longitud truncada.
+        
+        Args:
+            truncation_results: Diccionario con resultados del análisis de resonador truncado.
+                Formato: {percentage: {length_mm: float, f0: float, f1: float, f2: float, ...}}
+            ax: Eje de matplotlib opcional.
+            base_colors: Lista de colores base.
+        
+        Returns:
+            Figura de matplotlib.
+        """
+        fig: plt.Figure
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(10, 6))
+        else:
+            fig = ax.figure
+        
+        # Extraer datos
+        percentages = sorted(truncation_results.keys(), reverse=True)
+        lengths = [truncation_results[p].get('length_mm', np.nan) for p in percentages]
+        
+        # Graficar f0, f1, f2
+        for mode_idx in range(3):  # f0, f1, f2
+            freq_key = f'f{mode_idx}'
+            frequencies = [truncation_results[p].get(freq_key, np.nan) for p in percentages]
+            
+            # Filtrar NaN
+            valid_mask = ~np.isnan(frequencies) & ~np.isnan(lengths)
+            if np.any(valid_mask):
+                valid_lengths = np.array(lengths)[valid_mask]
+                valid_freqs = np.array(frequencies)[valid_mask]
+                
+                color = base_colors[mode_idx % len(base_colors)]
+                ax.plot(valid_lengths, valid_freqs, 'o-', 
+                       color=color, label=f'f{mode_idx}', 
+                       linewidth=2, markersize=6, alpha=0.8)
+        
+        ax.set_xlabel('Longitud Truncada (mm)', fontsize=12)
+        ax.set_ylabel('Frecuencia (Hz)', fontsize=12)
+        ax.set_title('Frecuencias de Resonancia vs. Longitud Truncada', fontsize=14, fontweight='bold')
+        ax.grid(True, linestyle=':', alpha=0.7)
+        ax.legend(fontsize=10, loc='best')
+        
+        fig.tight_layout()
+        return fig
+    
+    @staticmethod
+    def plot_resonator_truncation_inharmonicity(
+            truncation_results: Dict[float, Dict[str, Any]],
+            ax: Optional[plt.Axes] = None,
+            base_colors: List[str] = BASE_COLORS
+        ) -> plt.Figure:
+        """
+        Grafica la inharmonicidad vs. longitud truncada.
+        
+        Args:
+            truncation_results: Diccionario con resultados del análisis de resonador truncado.
+            ax: Eje de matplotlib opcional.
+            base_colors: Lista de colores base.
+        
+        Returns:
+            Figura de matplotlib.
+        """
+        fig: plt.Figure
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(10, 6))
+        else:
+            fig = ax.figure
+        
+        # Extraer datos
+        percentages = sorted(truncation_results.keys(), reverse=True)
+        lengths = [truncation_results[p].get('length_mm', np.nan) for p in percentages]
+        inharmonicities = [truncation_results[p].get('inharmonicity', np.nan) for p in percentages]
+        
+        # Filtrar NaN
+        valid_mask = ~np.isnan(inharmonicities) & ~np.isnan(lengths)
+        if np.any(valid_mask):
+            valid_lengths = np.array(lengths)[valid_mask]
+            valid_inharm = np.array(inharmonicities)[valid_mask]
+            
+            color = base_colors[0]
+            ax.plot(valid_lengths, valid_inharm, 'o-', 
+                   color=color, linewidth=2, markersize=6, alpha=0.8)
+        
+        ax.set_xlabel('Longitud Truncada (mm)', fontsize=12)
+        ax.set_ylabel('Inharmonicidad (cents)', fontsize=12)
+        ax.set_title('Inharmonicidad vs. Longitud Truncada', fontsize=14, fontweight='bold')
+        ax.grid(True, linestyle=':', alpha=0.7)
+        
+        fig.tight_layout()
+        return fig
+    
+    @staticmethod
+    def plot_resonator_truncation_harmonic_ratios(
+            truncation_results: Dict[float, Dict[str, Any]],
+            ax: Optional[plt.Axes] = None,
+            base_colors: List[str] = BASE_COLORS
+        ) -> plt.Figure:
+        """
+        Grafica las relaciones armónicas (f1/f0, f2/f0) vs. longitud truncada.
+        
+        Args:
+            truncation_results: Diccionario con resultados del análisis de resonador truncado.
+            ax: Eje de matplotlib opcional.
+            base_colors: Lista de colores base.
+        
+        Returns:
+            Figura de matplotlib.
+        """
+        fig: plt.Figure
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(10, 6))
+        else:
+            fig = ax.figure
+        
+        # Extraer datos
+        percentages = sorted(truncation_results.keys(), reverse=True)
+        lengths = [truncation_results[p].get('length_mm', np.nan) for p in percentages]
+        
+        # Calcular relaciones armónicas
+        ratios_f1_f0 = []
+        ratios_f2_f0 = []
+        
+        for p in percentages:
+            f0 = truncation_results[p].get('f0', np.nan)
+            f1 = truncation_results[p].get('f1', np.nan)
+            f2 = truncation_results[p].get('f2', np.nan)
+            
+            if not np.isnan(f0) and not np.isnan(f1) and f0 > 0:
+                ratios_f1_f0.append(f1 / f0)
+            else:
+                ratios_f1_f0.append(np.nan)
+            
+            if not np.isnan(f0) and not np.isnan(f2) and f0 > 0:
+                ratios_f2_f0.append(f2 / f0)
+            else:
+                ratios_f2_f0.append(np.nan)
+        
+        # Graficar relaciones
+        valid_mask_f1 = ~np.isnan(ratios_f1_f0) & ~np.isnan(lengths)
+        if np.any(valid_mask_f1):
+            valid_lengths = np.array(lengths)[valid_mask_f1]
+            valid_ratios = np.array(ratios_f1_f0)[valid_mask_f1]
+            ax.plot(valid_lengths, valid_ratios, 'o-', 
+                   color=base_colors[0], label='f1/f0', 
+                   linewidth=2, markersize=6, alpha=0.8)
+        
+        valid_mask_f2 = ~np.isnan(ratios_f2_f0) & ~np.isnan(lengths)
+        if np.any(valid_mask_f2):
+            valid_lengths = np.array(lengths)[valid_mask_f2]
+            valid_ratios = np.array(ratios_f2_f0)[valid_mask_f2]
+            ax.plot(valid_lengths, valid_ratios, 's-', 
+                   color=base_colors[1], label='f2/f0', 
+                   linewidth=2, markersize=6, alpha=0.8)
+        
+        # Líneas de referencia para relaciones armónicas ideales
+        if np.any(valid_mask_f1) or np.any(valid_mask_f2):
+            valid_lengths_all = np.array(lengths)[~np.isnan(lengths)]
+            if len(valid_lengths_all) > 0:
+                ax.axhline(y=2.0, color='gray', linestyle='--', alpha=0.5, label='Ideal f1/f0 = 2.0')
+                ax.axhline(y=3.0, color='gray', linestyle=':', alpha=0.5, label='Ideal f2/f0 = 3.0')
+        
+        ax.set_xlabel('Longitud Truncada (mm)', fontsize=12)
+        ax.set_ylabel('Relación Armónica', fontsize=12)
+        ax.set_title('Relaciones Armónicas vs. Longitud Truncada', fontsize=14, fontweight='bold')
+        ax.grid(True, linestyle=':', alpha=0.7)
+        ax.legend(fontsize=10, loc='best')
+        
+        fig.tight_layout()
+        return fig
+    
+    @staticmethod
+    def plot_resonator_truncation_impedance_overlay(
+            truncation_results: Dict[float, Dict[str, Any]],
+            selected_percentages: Optional[List[float]] = None,
+            ax: Optional[plt.Axes] = None,
+            base_colors: List[str] = BASE_COLORS,
+            linestyles: List[str] = LINESTYLES
+        ) -> plt.Figure:
+        """
+        Grafica curvas de impedancia superpuestas para diferentes longitudes truncadas.
+        
+        Args:
+            truncation_results: Diccionario con resultados del análisis de resonador truncado.
+            selected_percentages: Lista de porcentajes a mostrar (None = todos).
+            ax: Eje de matplotlib opcional.
+            base_colors: Lista de colores base.
+            linestyles: Lista de estilos de línea.
+        
+        Returns:
+            Figura de matplotlib.
+        """
+        fig: plt.Figure
+        if ax is None:
+            fig, ax = plt.subplots(figsize=(12, 7))
+        else:
+            fig = ax.figure
+        
+        # Seleccionar porcentajes a mostrar
+        if selected_percentages is None:
+            # Mostrar algunos porcentajes representativos
+            all_percentages = sorted(truncation_results.keys(), reverse=True)
+            step = max(1, len(all_percentages) // 8)  # Mostrar ~8 curvas
+            selected_percentages = all_percentages[::step]
+        
+        legend_handles = []
+        
+        for idx, percentage in enumerate(selected_percentages):
+            if percentage not in truncation_results:
+                continue
+            
+            result = truncation_results[percentage]
+            
+            # Obtener datos de impedancia
+            if 'frequencies' in result and 'impedance' in result:
+                frequencies = result['frequencies']
+                impedance = result['impedance']
+                
+                if len(frequencies) > 0 and len(impedance) > 0:
+                    # Calcular impedancia en dB
+                    impedance_db = 20 * np.log10(np.abs(impedance) + 1e-12)
+                    
+                    color = base_colors[idx % len(base_colors)]
+                    linestyle = linestyles[idx % len(linestyles)]
+                    
+                    length_mm = result.get('length_mm', percentage)
+                    line, = ax.plot(frequencies, impedance_db, 
+                                  color=color, linestyle=linestyle,
+                                  linewidth=1.5, alpha=0.7,
+                                  label=f'{percentage:.0f}% ({length_mm:.0f}mm)')
+                    legend_handles.append(line)
+        
+        ax.set_xlabel('Frecuencia (Hz)', fontsize=12)
+        ax.set_ylabel('Impedancia (dB)', fontsize=12)
+        ax.set_title('Curvas de Impedancia para Diferentes Longitudes Truncadas', 
+                    fontsize=14, fontweight='bold')
+        ax.grid(True, linestyle=':', alpha=0.7)
+        
+        if legend_handles:
+            ax.legend(handles=legend_handles, fontsize=9, loc='best', ncol=2)
+        
+        fig.tight_layout()
+        return fig

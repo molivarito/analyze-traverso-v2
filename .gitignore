@@ -172,3 +172,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# Bases de datos locales (no versionar)
+flute_analysis.db
+flute_analysis.db.backup

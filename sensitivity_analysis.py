@@ -1,8 +1,20 @@
 """
 Módulo para análisis de sensibilidad/perturbaciones de flautas.
 
-Permite variar parámetros geométricos de una flauta base y analizar
-el impacto en su respuesta acústica.
+Permite definir variaciones sistemáticas sobre una flauta base y evaluar
+cómo cambian sus métricas acústicas y geométricas.
+
+Flujo general:
+- `VariationConfig` describe QUÉ parámetro se varía (undercut, conicidad,
+  posición de corcho, etc.), en qué rango y en cuántos pasos.
+- `FluteVariantGenerator` aplica esa configuración sobre los datos JSON
+  de una flauta base y genera variantes puramente en memoria.
+- `SensitivityAnalyzer` convierte cada variante en un `FluteDataDB`
+  (con `db_manager=None` para no guardar en BD), ejecuta el análisis acústico
+  y expone utilidades de exportación a CSV/PDF.
+- `SensitivityReportGenerator` construye un reporte PDF completo:
+  portada, resumen, gráficos de evolución, tablas comparativas, estadísticas
+  y gráficos geométricos/acústicos usando `FluteAnalyzer` y `FluteOperations`.
 """
 
 import logging
@@ -287,6 +299,11 @@ class FluteVariantGenerator:
         """
         Aplica cambio en el ángulo de conicidad de una parte.
         
+        Solo considera las mediciones del cuerpo acústico (ignorando mortises),
+        tal como se hace en el perfil combinado. Esto asegura que la pendiente
+        se calcule sobre la sección que realmente está expuesta al interior
+        cuando la flauta está ensamblada.
+        
         Args:
             flute_data: Datos de la flauta a modificar
             part_name: Nombre de la parte (headjoint, left, right, foot)
@@ -303,27 +320,171 @@ class FluteVariantGenerator:
             logger.warning(f"Parte {part_name} tiene menos de 2 mediciones")
             return
         
-        # Calcular pendiente actual
-        positions = [m['position'] for m in measurements]
-        diameters = [m['diameter'] for m in measurements]
+        # Obtener información de mortise y total length
+        mortise_length = part_data.get('Mortise length', 0.0)
+        total_length = part_data.get('Total length', 0.0)
+        
+        # Determinar el rango del cuerpo acústico según la parte
+        # (misma lógica que en combine_measurements de flute_data.py)
+        # IMPORTANTE: Las mediciones están en posiciones relativas al inicio físico de cada parte
+        if part_name == FLUTE_PARTS_ORDER[0]:  # Headjoint
+            # El cuerpo acústico va desde el corcho hasta (total_length - mortise_length)
+            # Para el headjoint, las posiciones relativas coinciden con las absolutas
+            # porque el headjoint empieza físicamente en 0
+            stopper_pos = part_data.get('_calculated_stopper_absolute_position_mm')
+            if stopper_pos is None:
+                # Si no está calculado, intentar encontrar la primera medición después del inicio
+                # o usar 0 como fallback
+                if measurements:
+                    # Buscar la medición más cercana al inicio (puede haber mediciones antes del corcho)
+                    min_pos = min(m['position'] for m in measurements)
+                    stopper_pos = max(min_pos, 0.0)
+                else:
+                    stopper_pos = 0.0
+            acoustic_start = stopper_pos
+            acoustic_end = total_length - mortise_length
+        elif part_name == FLUTE_PARTS_ORDER[1]:  # Left
+            # El cuerpo acústico va desde 0.0 hasta total_length
+            acoustic_start = 0.0
+            acoustic_end = total_length
+        else:  # Right, Foot
+            # El cuerpo acústico va desde mortise_length hasta total_length
+            acoustic_start = mortise_length
+            acoustic_end = total_length
+        
+        # Filtrar mediciones que están dentro del cuerpo acústico
+        # Las mediciones están en posiciones relativas al inicio físico de la parte
+        acoustic_measurements = []
+        measurement_positions = []
+        for m in measurements:
+            pos = m.get('position', 0.0)
+            if not isinstance(pos, (int, float)):
+                continue
+            measurement_positions.append(pos)
+            # Incluir mediciones dentro del rango acústico (con pequeña tolerancia)
+            if pos >= acoustic_start - 1e-6 and pos <= acoustic_end + 1e-6:
+                acoustic_measurements.append(m)
+        
+        # Si no hay suficientes mediciones en el rango acústico, intentar usar todas las mediciones
+        # que estén después del inicio acústico (para headjoint, después del stopper)
+        if len(acoustic_measurements) < 2 and part_name == FLUTE_PARTS_ORDER[0]:
+            # Para headjoint, si no hay suficientes en el rango exacto, usar todas las que estén
+            # después del stopper y antes del final (ignorando mortise si es necesario)
+            acoustic_measurements = []
+            for m in measurements:
+                pos = m.get('position', 0.0)
+                if not isinstance(pos, (int, float)):
+                    continue
+                # Incluir mediciones después del stopper y antes del final de la parte
+                if pos >= acoustic_start - 1e-6 and pos <= total_length + 1e-6:
+                    acoustic_measurements.append(m)
+            logger.debug(f"Parte {part_name}: Fallback activado - usando {len(acoustic_measurements)} mediciones "
+                        f"después del stopper (rango: {acoustic_start:.2f} a {total_length:.2f} mm)")
+        
+        # Si aún no hay suficientes, intentar usar todas las mediciones disponibles
+        # (último recurso para headjoint cilíndrico)
+        if len(acoustic_measurements) < 2 and part_name == FLUTE_PARTS_ORDER[0]:
+            logger.warning(f"Parte {part_name}: Usando todas las mediciones disponibles como último recurso "
+                          f"(puede incluir zona antes del stopper)")
+            acoustic_measurements = [m for m in measurements if isinstance(m.get('position', 0.0), (int, float))]
+        
+        if len(acoustic_measurements) < 2:
+            min_meas_pos = min(measurement_positions) if measurement_positions else 0.0
+            max_meas_pos = max(measurement_positions) if measurement_positions else 0.0
+            logger.warning(f"Parte {part_name}: menos de 2 mediciones disponibles "
+                          f"(rango acústico esperado: {acoustic_start:.2f} a {acoustic_end:.2f} mm, "
+                          f"rango mediciones: {min_meas_pos:.2f} a {max_meas_pos:.2f} mm, "
+                          f"total_length: {total_length:.2f}, mortise_length: {mortise_length:.2f}, "
+                          f"encontradas: {len(acoustic_measurements)})")
+            return
+        
+        # Calcular pendiente actual usando solo mediciones del cuerpo acústico
+        positions = [m['position'] for m in acoustic_measurements]
+        diameters = [m['diameter'] for m in acoustic_measurements]
         
         if len(positions) >= 2:
-            current_slope, _ = np.polyfit(positions, diameters, 1)
+            current_slope, intercept = np.polyfit(positions, diameters, 1)
             
-            # Nueva pendiente
-            new_slope = current_slope * (1.0 + taper_change_pct / 100.0)
+            # Si la pendiente es muy pequeña (cercana a cero, headjoint cilíndrico),
+            # usar cambio absoluto en lugar de porcentual para generar variación visible
+            # Umbral más generoso: considerar "cero" si la pendiente es menor a 0.0001 mm/mm
+            # Esto cubre headjoints prácticamente cilíndricos
+            slope_threshold = 0.0001  # Umbral para considerar pendiente "cero" (0.0001 mm/mm)
             
-            # Punto de referencia (inicio de la parte)
-            ref_pos = measurements[0]['position']
-            ref_diam = measurements[0]['diameter']
+            logger.debug(f"Parte {part_name}: Pendiente calculada = {current_slope:.8f} mm/mm, "
+                        f"umbral = {slope_threshold:.8f} mm/mm, "
+                        f"abs(current_slope) < threshold? {abs(current_slope) < slope_threshold}")
             
-            # Aplicar nueva pendiente
-            for m in measurements:
+            if abs(current_slope) < slope_threshold:
+                # Pendiente cercana a cero: usar cambio absoluto
+                # El cambio porcentual se interpreta como cambio absoluto en mm/mm
+                # Escalamos el porcentaje: 100% = 0.001 mm/mm de cambio absoluto
+                # Esto significa que +400% = +0.004 mm/mm de pendiente
+                absolute_slope_change = (taper_change_pct / 100.0) * 0.001
+                new_slope = current_slope + absolute_slope_change
+                logger.info(f"Parte {part_name}: ⚠️ Pendiente cercana a cero detectada ({current_slope:.8f} mm/mm). "
+                          f"Usando cambio ABSOLUTO en lugar de porcentual: {absolute_slope_change:+.8f} mm/mm "
+                          f"(nueva pendiente: {new_slope:.8f} mm/mm)")
+            else:
+                # Pendiente normal: usar cambio porcentual
+                new_slope = current_slope * (1.0 + taper_change_pct / 100.0)
+                logger.debug(f"Parte {part_name}: Pendiente normal ({current_slope:.8f} mm/mm). "
+                           f"Usando cambio porcentual: {new_slope:.8f} mm/mm")
+            
+            # Punto de referencia: primera medición del cuerpo acústico
+            ref_pos = acoustic_measurements[0]['position']
+            ref_diam = acoustic_measurements[0]['diameter']
+            
+            # Guardar diámetros originales para logging
+            original_diameters = [m['diameter'] for m in acoustic_measurements]
+            
+            # Calcular el rango de posiciones para estimar el cambio máximo en diámetro
+            pos_range = max(positions) - min(positions) if len(positions) > 1 else 0.0
+            
+            # Aplicar nueva pendiente solo a las mediciones del cuerpo acústico
+            # IMPORTANTE: Modificar directamente en la lista measurements para que persista
+            # acoustic_measurements contiene referencias a los diccionarios en measurements
+            for m in acoustic_measurements:
                 relative_pos = m['position'] - ref_pos
                 new_diameter = ref_diam + new_slope * relative_pos
-                m['diameter'] = max(new_diameter, 1.0)  # Evitar valores negativos
+                new_diameter = max(new_diameter, 1.0)  # Evitar valores negativos
+                # Modificar directamente en el diccionario (que está en measurements)
+                m['diameter'] = new_diameter
             
-            logger.debug(f"Parte {part_name}: pendiente {current_slope:.5f} -> {new_slope:.5f}")
+            # Verificar que los cambios se reflejaron en measurements
+            # (acoustic_measurements son referencias, así que los cambios deberían estar ahí)
+            # Pero también verificar que están en la lista original measurements
+            modified_count = 0
+            for orig_m in measurements:
+                for ac_m in acoustic_measurements:
+                    if orig_m is ac_m:  # Misma referencia
+                        if abs(orig_m.get('diameter', 0) - ac_m.get('diameter', 0)) < 1e-9:
+                            modified_count += 1
+                        break
+            
+            # Verificar que los cambios se aplicaron correctamente
+            new_diameters = [m['diameter'] for m in acoustic_measurements]
+            max_change = max(abs(new_diameters[i] - original_diameters[i]) 
+                           for i in range(len(original_diameters))) if len(original_diameters) > 0 else 0.0
+            
+            # Recalcular pendiente después de la modificación para verificar
+            verify_positions = [m['position'] for m in acoustic_measurements]
+            verify_diameters = [m['diameter'] for m in acoustic_measurements]
+            verify_slope, _ = np.polyfit(verify_positions, verify_diameters, 1)
+            
+            # Calcular cambio estimado en diámetro al final del rango
+            estimated_diam_change = new_slope * pos_range if pos_range > 0 else 0.0
+            
+            logger.info(f"Parte {part_name}: pendiente {current_slope:.6f} -> {new_slope:.6f} "
+                        f"(verificado: {verify_slope:.6f}, cambio: {taper_change_pct:+.1f}%) "
+                        f"(cuerpo acústico: {acoustic_start:.2f} a {acoustic_end:.2f} mm, "
+                        f"{len(acoustic_measurements)} mediciones, rango: {pos_range:.2f} mm, "
+                        f"max cambio diámetro: {max_change:.4f} mm, cambio estimado al final: {estimated_diam_change:.4f} mm)")
+            
+            # Si el cambio es muy pequeño, advertir
+            if abs(current_slope) < slope_threshold and abs(taper_change_pct) > 50:
+                logger.info(f"Parte {part_name}: Pendiente cercana a cero detectada. "
+                          f"Se usó cambio absoluto en lugar de porcentual para generar variación visible.")
     
     def _apply_stopper_position(self, flute_data: Dict, offset_change_mm: float) -> None:
         """
@@ -470,17 +631,45 @@ class FluteVariantGenerator:
 
 
 class SensitivityAnalyzer:
-    """Orquesta el análisis completo de sensibilidad."""
+    """
+    Orquesta el análisis completo de sensibilidad a partir de una flauta base.
+
+    Dado un `FluteDataDB` base y una `VariationConfig`, este componente:
+    - Genera variantes geométricas en memoria (vía `FluteVariantGenerator`).
+    - Crea un objeto `FluteDataDB` por variante con `db_manager=None` para que
+      no se persistan en la tabla principal de la base de datos.
+    - Opcionalmente calcula el análisis acústico de cada variante.
+    - Conserva la geometría externa de la flauta base en todas las variantes
+      para que los gráficos 2D/3D sean coherentes entre sí.
+    - Opcionalmente guarda resultados en tabla separada de sensibilidad.
+    """
     
-    def __init__(self, base_flute: FluteDataDB):
+    def __init__(
+        self, 
+        base_flute: FluteDataDB,
+        save_to_db: bool = False,  # NUEVO: control explícito
+        db_manager: Optional['FluteDBManager'] = None  # NUEVO: db_manager opcional
+    ):
         """
         Inicializa el analizador de sensibilidad.
         
         Args:
-            base_flute: Objeto FluteDataDB de la flauta base
+            base_flute: Objeto FluteDataDB de la flauta base.
+            save_to_db: Si True, guarda resultados en tabla de sensibilidad.
+            db_manager: Gestor de BD (si save_to_db=True, debe proporcionarse).
         """
         self.base_flute = base_flute
         self.variants = []
+        self.save_to_db = save_to_db
+        self.db_manager = db_manager
+        self.sensitivity_run_id: Optional[int] = None
+        
+        # Validar que si save_to_db=True, tenemos db_manager y base_flute tiene _flute_db_id
+        if save_to_db:
+            if db_manager is None:
+                raise ValueError("db_manager debe proporcionarse si save_to_db=True")
+            if not hasattr(base_flute, '_flute_db_id') or base_flute._flute_db_id is None:
+                raise ValueError("base_flute debe tener _flute_db_id para guardar en BD")
     
     def run_analysis(
         self,
@@ -503,10 +692,29 @@ class SensitivityAnalyzer:
             progress_callback: Función opcional para reportar progreso (current, total, message)
         
         Returns:
-            Lista de objetos FluteDataDB (en memoria, no guardados en BD)
+            Lista de objetos FluteDataDB (en memoria, no guardados en tabla principal)
         """
         logger.info(f"Iniciando análisis de sensibilidad: {config.parameter.value}")
         logger.info(f"Rango: {config.min_value} a {config.max_value} en {config.num_steps} pasos")
+        
+        # NUEVO: Crear run en BD si save_to_db=True
+        if self.save_to_db and self.db_manager is not None:
+            try:
+                self.sensitivity_run_id = self.db_manager.create_sensitivity_run(
+                    base_flute_id=self.base_flute._flute_db_id,
+                    parameter_name=config.parameter.value,
+                    min_value=config.min_value,
+                    max_value=config.max_value,
+                    num_steps=config.num_steps,
+                    target_part=config.target_part,
+                    target_hole=config.target_hole,
+                    description=f"Análisis de sensibilidad: {config.parameter.get_display_name()}"
+                )
+                logger.info(f"Run de sensibilidad creado: ID {self.sensitivity_run_id}")
+            except Exception as e:
+                logger.error(f"Error creando run de sensibilidad: {e}")
+                # Continuar sin guardar en BD
+                self.save_to_db = False
         
         # Generar variantes geométricas
         if progress_callback:
@@ -527,16 +735,56 @@ class SensitivityAnalyzer:
                 )
             
             try:
-                # Crear FluteDataDB en memoria (no guardar en BD)
+                # NUEVO: Crear FluteDataDB con flags de sensibilidad
                 variant_flute = FluteDataDB(
                     source=variant_data,
                     source_name=variant_name,
                     temperature=temperature,
                     la_frequency=la_frequency,
                     skip_acoustic_analysis=not calculate_acoustic,
-                    db_manager=None,  # No guardar en BD
-                    include_pressure_flow=include_pressure_flow
+                    db_manager=None,  # No guardar en tabla principal
+                    include_pressure_flow=include_pressure_flow,
+                    is_sensitivity_variant=True,  # NUEVO
+                    sensitivity_run_id=self.sensitivity_run_id  # NUEVO
                 )
+                
+                # NUEVO: Si save_to_db, pasar db_manager original para tabla de sensibilidad
+                if self.save_to_db and self.db_manager is not None:
+                    variant_flute._original_db_manager = self.db_manager
+                
+                # Verificar que las modificaciones se aplicaron correctamente
+                if config.parameter == SensitivityParameter.PART_TAPER and config.target_part:
+                    part_data_variant = variant_flute.data.get(config.target_part, {})
+                    measurements_variant = part_data_variant.get('measurements', [])
+                    if measurements_variant:
+                        # Calcular pendiente de la variante para verificar
+                        mortise_length = part_data_variant.get('Mortise length', 0.0)
+                        total_length = part_data_variant.get('Total length', 0.0)
+                        
+                        if config.target_part == FLUTE_PARTS_ORDER[0]:  # Headjoint
+                            stopper_pos = part_data_variant.get('_calculated_stopper_absolute_position_mm')
+                            if stopper_pos is None:
+                                stopper_pos = measurements_variant[0]['position'] if measurements_variant else 0.0
+                            acoustic_start = stopper_pos
+                            acoustic_end = total_length - mortise_length
+                        elif config.target_part == FLUTE_PARTS_ORDER[1]:  # Left
+                            acoustic_start = 0.0
+                            acoustic_end = total_length
+                        else:  # Right, Foot
+                            acoustic_start = mortise_length
+                            acoustic_end = total_length
+                        
+                        acoustic_measurements_variant = [
+                            m for m in measurements_variant
+                            if acoustic_start - 1e-6 <= m['position'] <= acoustic_end + 1e-6
+                        ]
+                        
+                        if len(acoustic_measurements_variant) >= 2:
+                            positions_v = [m['position'] for m in acoustic_measurements_variant]
+                            diameters_v = [m['diameter'] for m in acoustic_measurements_variant]
+                            variant_slope, _ = np.polyfit(positions_v, diameters_v, 1)
+                            logger.info(f"Variante {variant_name}: Pendiente verificada = {variant_slope:.6f} mm/mm "
+                                      f"(esperada: {param_value:+.1f}% de cambio)")
                 
                 # IMPORTANTE: Preservar la geometría externa original del objeto base
                 # en lugar de usar la geometría generada automáticamente

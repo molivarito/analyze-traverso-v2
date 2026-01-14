@@ -1,0 +1,13 @@
+\babel@toc {english}{}\relax 
+\beamer@sectionintoc {1}{Introduction}{3}{0}{1}
+\beamer@sectionintoc {2}{Geometric Visualization}{5}{0}{2}
+\beamer@sectionintoc {3}{Acoustic Analysis}{8}{0}{3}
+\beamer@sectionintoc {4}{Resonator Truncation Analysis}{18}{0}{4}
+\beamer@sectionintoc {5}{Sensitivity Analysis}{27}{0}{5}
+\beamer@sectionintoc {6}{Database \& Statistics}{30}{0}{6}
+\beamer@sectionintoc {7}{Engineering Tools}{32}{0}{7}
+\beamer@sectionintoc {8}{Multi-Flute Comparison}{35}{0}{8}
+\beamer@sectionintoc {9}{Technical Implementation}{36}{0}{9}
+\beamer@sectionintoc {10}{Applications \& Use Cases}{39}{0}{10}
+\beamer@sectionintoc {11}{Future Directions}{41}{0}{11}
+\beamer@sectionintoc {12}{Conclusion}{42}{0}{12}

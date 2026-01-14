@@ -11,11 +11,26 @@ import sqlite3
 from pathlib import Path
 from typing import Optional
 import logging
+import time
 
 logger = logging.getLogger(__name__)
 
 # Nombre del archivo de base de datos por defecto
-DEFAULT_DB_PATH = Path(__file__).parent / "flute_analysis.db"
+# Intentar usar ubicación local fuera de Google Drive si existe db_config
+try:
+    from db_config import DB_PATH as DEFAULT_DB_PATH
+except ImportError:
+    # Fallback a ubicación original si no existe db_config
+    DEFAULT_DB_PATH = Path(__file__).parent / "flute_analysis.db"
+
+# Timeout para operaciones de base de datos (en segundos)
+DB_TIMEOUT = 10.0
+
+# Número máximo de reintentos para operaciones de I/O
+MAX_RETRIES = 3
+
+# Tiempo de espera entre reintentos (en segundos)
+RETRY_DELAY = 0.5
 
 
 def create_database_schema(db_path: Optional[Path] = None) -> Path:
@@ -27,6 +42,9 @@ def create_database_schema(db_path: Optional[Path] = None) -> Path:
     
     Returns:
         Path al archivo de base de datos creado.
+    
+    Raises:
+        sqlite3.OperationalError: Si hay un error de I/O o acceso a la base de datos.
     """
     if db_path is None:
         db_path = DEFAULT_DB_PATH
@@ -34,7 +52,23 @@ def create_database_schema(db_path: Optional[Path] = None) -> Path:
     db_path = Path(db_path)
     db_path.parent.mkdir(parents=True, exist_ok=True)
     
-    conn = sqlite3.connect(str(db_path))
+    # Intentar conectar con reintentos para manejar errores de I/O
+    conn = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            conn = sqlite3.connect(str(db_path), timeout=DB_TIMEOUT)
+            break
+        except (sqlite3.OperationalError, OSError) as e:
+            if attempt < MAX_RETRIES - 1:
+                logger.warning(f"Error conectando a la base de datos (intento {attempt + 1}/{MAX_RETRIES}): {e}. Reintentando...")
+                time.sleep(RETRY_DELAY * (2 ** attempt))  # Backoff exponencial
+            else:
+                logger.error(f"Error crítico conectando a la base de datos después de {MAX_RETRIES} intentos: {e}")
+                raise
+    
+    if conn is None:
+        raise sqlite3.OperationalError("No se pudo establecer conexión con la base de datos")
+    
     cursor = conn.cursor()
     
     try:
@@ -158,6 +192,37 @@ def create_database_schema(db_path: Optional[Path] = None) -> Path:
             )
         """)
         
+        # Tabla 9: Análisis de sensibilidad (runs)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sensitivity_analysis_runs (
+                run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                base_flute_id INTEGER NOT NULL,
+                parameter_name TEXT NOT NULL,  -- 'hole_undercut', 'part_taper', etc.
+                min_value REAL NOT NULL,
+                max_value REAL NOT NULL,
+                num_steps INTEGER NOT NULL,
+                target_part TEXT,  -- Para parámetros específicos de parte
+                target_hole INTEGER,  -- Para parámetros específicos de agujero
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                description TEXT,
+                FOREIGN KEY (base_flute_id) REFERENCES flutes(id) ON DELETE CASCADE
+            )
+        """)
+        
+        # Tabla 10: Variantes de análisis de sensibilidad
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sensitivity_variants (
+                variant_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                run_id INTEGER NOT NULL,
+                parameter_value REAL NOT NULL,
+                variant_name TEXT NOT NULL,
+                calculation_params_id INTEGER,  -- Referencia a impedance_calculation_params
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (run_id) REFERENCES sensitivity_analysis_runs(run_id) ON DELETE CASCADE,
+                FOREIGN KEY (calculation_params_id) REFERENCES impedance_calculation_params(id) ON DELETE SET NULL
+            )
+        """)
+        
         # Índices para mejorar rendimiento de consultas
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_flutes_model ON flutes(flute_model)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_flute_geometry_flute_id ON flute_geometry(flute_id)")
@@ -167,6 +232,10 @@ def create_database_schema(db_path: Optional[Path] = None) -> Path:
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_impedance_note ON impedance_results(note)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_external_geometry_flute_id ON external_geometry(flute_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_external_geometry_params_flute_id ON external_geometry_parameters(flute_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sensitivity_runs_base_flute ON sensitivity_analysis_runs(base_flute_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sensitivity_runs_created ON sensitivity_analysis_runs(created_at)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sensitivity_variants_run_id ON sensitivity_variants(run_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sensitivity_variants_calc_params ON sensitivity_variants(calculation_params_id)")
         
         conn.commit()
         logger.info(f"Esquema de base de datos creado/verificado en: {db_path}")
@@ -183,25 +252,54 @@ def create_database_schema(db_path: Optional[Path] = None) -> Path:
 
 def get_database_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
     """
-    Obtiene una conexión a la base de datos.
+    Obtiene una conexión a la base de datos con manejo robusto de errores.
     
     Args:
         db_path: Ruta al archivo de base de datos. Si es None, usa DEFAULT_DB_PATH.
     
     Returns:
         Conexión SQLite.
+    
+    Raises:
+        sqlite3.OperationalError: Si hay un error de I/O o acceso a la base de datos.
     """
     if db_path is None:
         db_path = DEFAULT_DB_PATH
     
     db_path = Path(db_path)
     
-    # Asegurar que la base de datos existe
+    # Asegurar que la base de datos existe (con manejo de errores)
     if not db_path.exists():
-        create_database_schema(db_path)
+        try:
+            create_database_schema(db_path)
+        except sqlite3.OperationalError as e:
+            logger.error(f"No se pudo crear/verificar el esquema de la base de datos: {e}")
+            raise
     
-    conn = sqlite3.connect(str(db_path))
-    conn.row_factory = sqlite3.Row  # Permite acceso por nombre de columna
+    # Intentar conectar con reintentos
+    conn = None
+    for attempt in range(MAX_RETRIES):
+        try:
+            conn = sqlite3.connect(str(db_path), timeout=DB_TIMEOUT)
+            conn.row_factory = sqlite3.Row  # Permite acceso por nombre de columna
+            # Configurar modo WAL para mejor rendimiento y menor bloqueo
+            try:
+                conn.execute("PRAGMA journal_mode=WAL")
+            except sqlite3.OperationalError:
+                # Si WAL no está disponible, continuar sin él
+                pass
+            break
+        except (sqlite3.OperationalError, OSError) as e:
+            if attempt < MAX_RETRIES - 1:
+                logger.warning(f"Error conectando a la base de datos (intento {attempt + 1}/{MAX_RETRIES}): {e}. Reintentando...")
+                time.sleep(RETRY_DELAY * (2 ** attempt))  # Backoff exponencial
+            else:
+                logger.error(f"Error crítico conectando a la base de datos después de {MAX_RETRIES} intentos: {e}")
+                raise
+    
+    if conn is None:
+        raise sqlite3.OperationalError("No se pudo establecer conexión con la base de datos")
+    
     return conn
 
 

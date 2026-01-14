@@ -1,6 +1,22 @@
 """
-Editor Interactivo de Geometría de Flautas con PyQt5
-Permite editar geometría, comparar respuestas acústicas, iterar con versiones.
+Editor interactivo de geometría de flautas con PyQt5.
+
+Objetivos:
+- Permitir editar la geometría interna por partes (mediciones del bore y agujeros).
+- Mantener un historial de versiones para iterar fácilmente sobre diseños.
+- Visualizar, en un único gráfico de edición, el perfil interno y la posición
+  de los agujeros (cilíndricos y cónicos).
+- Integrarse con la GUI principal:
+  - Señal `flute_loaded_for_analysis` para recalcular y visualizar en la GUI.
+  - Señal `flute_modified` cuando se guarda una nueva flauta en disco.
+
+Convenciones para agujeros:
+- Agujero cilíndrico: número (diámetro en mm).
+- Agujero cónico: lista `[diam_out_mm, diam_in_mm]` donde `diam_out_mm` es el
+  diámetro en la superficie externa y `diam_in_mm` el diámetro en la superficie
+  interna. Esta misma convención se refleja en la tabla:
+  - Columna “Diámetro” → `diam_out_mm`
+  - Columna “Diámetro Interno” → `diam_in_mm` (vacía para cilindros)
 """
 
 import sys
@@ -98,7 +114,21 @@ class VersionHistory:
 
 
 class FluteGeometryEditor(QDialog):
-    """Editor interactivo de geometría de flautas."""
+    """
+    Editor interactivo de geometría de flautas.
+
+    Este diálogo:
+    - Sincroniza una tabla de mediciones del perfil con una vista de edición
+      interactiva (drag & drop de puntos y agujeros).
+    - Mantiene la tabla de agujeros alineada con la representación interna:
+      cilindros (número) y conos (`[diam_out, diam_in]`) con sus columnas
+      asociadas de chimenea y diámetro externo.
+    - Se integra con la GUI principal mediante:
+      - `flute_loaded_for_analysis(FluteDataDB)`: carga la versión editada para
+        análisis completo sin escribir en BD.
+      - `flute_modified(str)`: notifica que se ha guardado una nueva flauta
+        (subdirectorio JSON) para que la GUI pueda refrescar la lista.
+    """
     
     flute_modified = pyqtSignal(str)  # Señal cuando se guarda una nueva flauta
     flute_loaded_for_analysis = pyqtSignal(object)  # Señal cuando se carga para análisis en GUI principal

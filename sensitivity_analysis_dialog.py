@@ -1,9 +1,24 @@
 """
-Diálogo para configuración y ejecución de análisis de sensibilidad.
+Diálogo Qt para configurar y ejecutar análisis de sensibilidad.
+
+Este módulo proporciona:
+- Un `QDialog` (`SensitivityAnalysisDialog`) donde el usuario elige la flauta
+  base, el parámetro a variar, el rango de valores y las opciones de cálculo.
+- Un worker en `QThread` (`SensitivityWorker`) que ejecuta el análisis en
+  segundo plano usando `SensitivityAnalyzer`, emitiendo señales de progreso.
+
+Flujo GUI → núcleo:
+- El usuario configura el análisis y pulsa “Generar y Cargar Variantes”.
+- El diálogo crea un `SensitivityAnalyzer` con la flauta base seleccionada.
+- `SensitivityWorker` llama a `run_analysis` en un hilo separado.
+- Al finalizar, se emite `variants_ready(list[FluteDataDB])`, que la GUI
+  principal usa para cargar las variantes (por ejemplo, como nueva pestaña).
+- Opcionalmente, el usuario puede exportar un reporte PDF completo desde aquí.
 """
 
 import logging
-from typing import List, Optional
+import numpy as np
+from typing import List, Optional, Tuple
 from pathlib import Path
 
 from PyQt5.QtWidgets import (
@@ -188,6 +203,12 @@ class SensitivityAnalysisDialog(QDialog):
         self.calculated_label.setStyleSheet("color: blue; font-weight: bold;")
         variation_layout.addRow("", self.calculated_label)
         
+        # Label para mostrar rango de pendientes (solo para PART_TAPER)
+        self.slope_range_label = QLabel()
+        self.slope_range_label.setStyleSheet("color: green; font-size: 9pt;")
+        self.slope_range_label.setVisible(False)
+        variation_layout.addRow("", self.slope_range_label)
+        
         layout.addWidget(variation_group)
         
         # Sección 4: Previsualización
@@ -273,6 +294,10 @@ class SensitivityAnalysisDialog(QDialog):
         self.part_combo.currentIndexChanged.connect(self._update_current_value)
         self.hole_spinbox.valueChanged.connect(self._update_current_value)
         
+        # Conectar cambios en min/max para actualizar rango de pendientes y previsualización
+        self.min_value_spinbox.valueChanged.connect(self._update_slope_range)
+        self.max_value_spinbox.valueChanged.connect(self._update_slope_range)
+        
         self.num_steps_radio.toggled.connect(self._update_step_mode)
         self.step_size_radio.toggled.connect(self._update_step_mode)
         
@@ -310,6 +335,125 @@ class SensitivityAnalysisDialog(QDialog):
         self.flute_info_label.setText(" | ".join(info_parts))
         self._update_current_value()
     
+    def _calculate_current_slope(self, part_name: str) -> Optional[float]:
+        """
+        Calcula la pendiente actual de una parte usando solo el cuerpo acústico.
+        
+        Usa combined_measurements si está disponible (más confiable), o calcula
+        desde las mediciones de la parte aplicando el mismo filtrado que en
+        _apply_part_taper.
+        
+        Returns:
+            Pendiente en mm/mm, o None si no se puede calcular
+        """
+        idx = self.flute_combo.currentIndex()
+        if idx < 0 or idx >= len(self.flute_ops_list):
+            return None
+        
+        flute_data = self.flute_ops_list[idx].flute_data
+        
+        # Intentar usar combined_measurements primero (más confiable)
+        combined_measurements = flute_data.combined_measurements
+        if combined_measurements:
+            # Filtrar mediciones de la parte específica desde combined_measurements
+            part_measurements = [
+                m for m in combined_measurements 
+                if m.get('source_part_name') == part_name
+            ]
+            
+            if len(part_measurements) >= 2:
+                # Usar posiciones relativas a la parte (source_relative_position)
+                # o posiciones absolutas, dependiendo de lo que esté disponible
+                positions = []
+                diameters = []
+                
+                for m in part_measurements:
+                    # Para headjoint, las posiciones en combined_measurements son absolutas
+                    # pero necesitamos posiciones relativas a la parte para calcular la pendiente
+                    if part_name == FLUTE_PARTS_ORDER[0]:  # Headjoint
+                        # Usar source_relative_position que es relativo a la parte
+                        pos = m.get('source_relative_position', m.get('position', 0.0))
+                    else:
+                        # Para otras partes, usar source_relative_position
+                        pos = m.get('source_relative_position', m.get('position', 0.0))
+                    
+                    positions.append(pos)
+                    diameters.append(m.get('diameter', 0.0))
+                
+                if len(positions) >= 2:
+                    try:
+                        slope, _ = np.polyfit(positions, diameters, 1)
+                        return slope
+                    except:
+                        pass
+        
+        # Fallback: calcular desde las mediciones de la parte directamente
+        part_data = flute_data.data.get(part_name, {})
+        if not part_data:
+            return None
+        
+        measurements = part_data.get('measurements', [])
+        if len(measurements) < 2:
+            return None
+        
+        mortise_length = part_data.get('Mortise length', 0.0)
+        total_length = part_data.get('Total length', 0.0)
+        
+        # Determinar el rango del cuerpo acústico (misma lógica que en _apply_part_taper)
+        if part_name == FLUTE_PARTS_ORDER[0]:  # Headjoint
+            # Intentar obtener la posición del corcho de varias formas
+            stopper_pos = part_data.get('_calculated_stopper_absolute_position_mm')
+            
+            # Si no está en part_data, intentar desde flute_data directamente
+            if stopper_pos is None:
+                headjoint_data = flute_data.data.get(FLUTE_PARTS_ORDER[0], {})
+                stopper_pos = headjoint_data.get('_calculated_stopper_absolute_position_mm')
+            
+            # Si aún no está disponible, usar combined_measurements para encontrar el inicio
+            if stopper_pos is None and combined_measurements:
+                # Buscar la primera medición del headjoint en combined_measurements
+                for m in combined_measurements:
+                    if m.get('source_part_name') == part_name:
+                        stopper_pos = m.get('source_relative_position', m.get('position', 0.0))
+                        break
+            
+            # Último fallback: usar primera medición
+            if stopper_pos is None:
+                stopper_pos = measurements[0]['position'] if measurements else 0.0
+            
+            acoustic_start = stopper_pos
+            acoustic_end = total_length - mortise_length
+        elif part_name == FLUTE_PARTS_ORDER[1]:  # Left
+            acoustic_start = 0.0
+            acoustic_end = total_length
+        else:  # Right, Foot
+            acoustic_start = mortise_length
+            acoustic_end = total_length
+        
+        # Filtrar mediciones del cuerpo acústico
+        acoustic_measurements = []
+        for m in measurements:
+            pos = m['position']
+            if pos >= acoustic_start - 1e-6 and pos <= acoustic_end + 1e-6:
+                acoustic_measurements.append(m)
+        
+        if len(acoustic_measurements) < 2:
+            logger.debug(f"No hay suficientes mediciones acústicas para {part_name}: "
+                        f"rango {acoustic_start:.2f} a {acoustic_end:.2f} mm, "
+                        f"{len(acoustic_measurements)} mediciones encontradas")
+            return None
+        
+        # Calcular pendiente
+        positions = [m['position'] for m in acoustic_measurements]
+        diameters = [m['diameter'] for m in acoustic_measurements]
+        
+        try:
+            slope, _ = np.polyfit(positions, diameters, 1)
+            return slope
+        except Exception as e:
+            logger.debug(f"Error calculando pendiente para {part_name}: {e}")
+            return None
+    
     def _update_parameter_specific_controls(self):
         """Muestra/oculta controles específicos según el parámetro seleccionado."""
         param = self.parameter_combo.currentData()
@@ -334,7 +478,11 @@ class SensitivityAnalysisDialog(QDialog):
             self.max_value_spinbox.setValue(15.0)
             self.min_value_spinbox.setSuffix(f" {unit}")
             self.max_value_spinbox.setSuffix(f" {unit}")
+            self.slope_range_label.setVisible(False)
         elif param == SensitivityParameter.PART_TAPER:
+            # Para PART_TAPER, calcular rango razonable basado en pendiente actual
+            self.slope_range_label.setVisible(True)
+            # Los valores por defecto se ajustarán en _update_current_value
             self.min_value_spinbox.setValue(-50.0)
             self.max_value_spinbox.setValue(50.0)
             self.min_value_spinbox.setSuffix(f" {unit}")
@@ -344,21 +492,25 @@ class SensitivityAnalysisDialog(QDialog):
             self.max_value_spinbox.setValue(10.0)
             self.min_value_spinbox.setSuffix(f" {unit}")
             self.max_value_spinbox.setSuffix(f" {unit}")
+            self.slope_range_label.setVisible(False)
         elif param == SensitivityParameter.HOLE_DIAMETER:
             self.min_value_spinbox.setValue(-2.0)
             self.max_value_spinbox.setValue(2.0)
             self.min_value_spinbox.setSuffix(f" {unit}")
             self.max_value_spinbox.setSuffix(f" {unit}")
+            self.slope_range_label.setVisible(False)
         elif param == SensitivityParameter.EMBOUCHURE_DIAMETER:
             self.min_value_spinbox.setValue(-2.0)
             self.max_value_spinbox.setValue(2.0)
             self.min_value_spinbox.setSuffix(f" {unit}")
             self.max_value_spinbox.setSuffix(f" {unit}")
+            self.slope_range_label.setVisible(False)
         elif param == SensitivityParameter.HOLE_POSITION:
             self.min_value_spinbox.setValue(-10.0)
             self.max_value_spinbox.setValue(10.0)
             self.min_value_spinbox.setSuffix(f" {unit}")
             self.max_value_spinbox.setSuffix(f" {unit}")
+            self.slope_range_label.setVisible(False)
         
         self._update_current_value()
         self._update_preview()
@@ -373,9 +525,41 @@ class SensitivityAnalysisDialog(QDialog):
         param = self.parameter_combo.currentData()
         unit = param.get_unit()
         
-        # Por ahora, solo mostrar valor placeholder
-        # TODO: Extraer valor real del JSON
-        self.current_value_label.setText(f"0.0 {unit} (base)")
+        if param == SensitivityParameter.PART_TAPER:
+            # Calcular pendiente actual de la parte seleccionada
+            part_name = self.part_combo.currentData()
+            if part_name:
+                current_slope = self._calculate_current_slope(part_name)
+                if current_slope is not None:
+                    self.current_value_label.setText(
+                        f"Pendiente actual: {current_slope:.6f} mm/mm"
+                    )
+                    # Ajustar rango razonable basado en la pendiente
+                    # Si la pendiente es muy pequeña (< 0.001), sugerir un rango porcentual más amplio
+                    # para que haya variación significativa
+                    if abs(current_slope) < 0.001:
+                        # Pendiente muy pequeña: usar rango porcentual amplio para generar variación
+                        # Por ejemplo, variar entre -200% y +200% para obtener variación significativa
+                        self.min_value_spinbox.setValue(-200.0)
+                        self.max_value_spinbox.setValue(200.0)
+                    else:
+                        # Pendiente normal: usar porcentaje estándar
+                        self.min_value_spinbox.setValue(-50.0)
+                        self.max_value_spinbox.setValue(50.0)
+                    
+                    self.min_value_spinbox.setSuffix(f" {unit}")
+                    self.max_value_spinbox.setSuffix(f" {unit}")
+                    self._update_slope_range()
+                else:
+                    self.current_value_label.setText("No se pudo calcular pendiente")
+                    self.slope_range_label.setText("")
+            else:
+                self.current_value_label.setText("Selecciona una parte")
+                self.slope_range_label.setText("")
+        else:
+            # Para otros parámetros, mostrar placeholder
+            self.current_value_label.setText(f"0.0 {unit} (base)")
+            self.slope_range_label.setVisible(False)
     
     def _update_step_mode(self):
         """Actualiza el modo de configuración de pasos."""
@@ -385,6 +569,35 @@ class SensitivityAnalysisDialog(QDialog):
         self.step_size_spinbox.setEnabled(not use_num_steps)
         
         self._update_preview()
+    
+    def _update_slope_range(self):
+        """Actualiza el label que muestra el rango de pendientes para PART_TAPER."""
+        param = self.parameter_combo.currentData()
+        if param != SensitivityParameter.PART_TAPER:
+            return
+        
+        part_name = self.part_combo.currentData()
+        if not part_name:
+            self.slope_range_label.setText("")
+            return
+        
+        current_slope = self._calculate_current_slope(part_name)
+        if current_slope is None:
+            self.slope_range_label.setText("")
+            return
+        
+        min_pct = self.min_value_spinbox.value()
+        max_pct = self.max_value_spinbox.value()
+        
+        # Calcular pendientes resultantes (modo porcentual)
+        min_slope = current_slope * (1.0 + min_pct / 100.0)
+        max_slope = current_slope * (1.0 + max_pct / 100.0)
+        
+        # Mostrar rango de pendientes resultante
+        self.slope_range_label.setText(
+            f"Rango de pendientes resultante: {min_slope:.6f} a {max_slope:.6f} mm/mm "
+            f"(variación: {min_pct:+.1f}% a {max_pct:+.1f}%)"
+        )
     
     def _update_preview(self):
         """Actualiza la previsualización de variantes."""
@@ -412,22 +625,67 @@ class SensitivityAnalysisDialog(QDialog):
         else:
             values = [min_val]
         
-        # Limitar visualización
-        unit = self.parameter_combo.currentData().get_unit()
+        # Para PART_TAPER, mostrar valores de pendiente reales
+        param = self.parameter_combo.currentData()
+        unit = param.get_unit()
         
-        preview_lines = [f"Se generarán {len(values)} variantes:\n"]
-        
-        if len(values) <= 15:
-            for i, val in enumerate(values, 1):
-                preview_lines.append(f"{i}. {val:.3f} {unit}")
+        if param == SensitivityParameter.PART_TAPER:
+            part_name = self.part_combo.currentData()
+            current_slope = self._calculate_current_slope(part_name) if part_name else None
+            
+            if current_slope is not None:
+                # Modo porcentual: mostrar porcentajes y pendientes resultantes
+                preview_lines = [f"Se generarán {len(values)} variantes:\n"]
+                preview_lines.append(f"Pendiente actual: {current_slope:.6f} mm/mm\n")
+                
+                if len(values) <= 15:
+                    for i, val in enumerate(values, 1):
+                        new_slope = current_slope * (1.0 + val / 100.0)
+                        preview_lines.append(
+                            f"{i}. {val:+.1f}% → Pendiente: {new_slope:.6f} mm/mm"
+                        )
+                else:
+                    for i, val in enumerate(values[:5], 1):
+                        new_slope = current_slope * (1.0 + val / 100.0)
+                        preview_lines.append(
+                            f"{i}. {val:+.1f}% → Pendiente: {new_slope:.6f} mm/mm"
+                        )
+                    preview_lines.append(f"... ({len(values) - 10} más) ...")
+                    for i, val in enumerate(values[-5:], len(values)-4):
+                        new_slope = current_slope * (1.0 + val / 100.0)
+                        preview_lines.append(
+                            f"{i}. {val:+.1f}% → Pendiente: {new_slope:.6f} mm/mm"
+                        )
+                
+                self.preview_text.setPlainText("\n".join(preview_lines))
+            else:
+                # No se pudo calcular pendiente, mostrar valores porcentuales normales
+                preview_lines = [f"Se generarán {len(values)} variantes:\n"]
+                if len(values) <= 15:
+                    for i, val in enumerate(values, 1):
+                        preview_lines.append(f"{i}. {val:.3f} {unit}")
+                else:
+                    for i, val in enumerate(values[:5], 1):
+                        preview_lines.append(f"{i}. {val:.3f} {unit}")
+                    preview_lines.append(f"... ({len(values) - 10} más) ...")
+                    for i, val in enumerate(values[-5:], len(values)-4):
+                        preview_lines.append(f"{i}. {val:.3f} {unit}")
+                self.preview_text.setPlainText("\n".join(preview_lines))
         else:
-            for i, val in enumerate(values[:5], 1):
-                preview_lines.append(f"{i}. {val:.3f} {unit}")
-            preview_lines.append(f"... ({len(values) - 10} más) ...")
-            for i, val in enumerate(values[-5:], len(values)-4):
-                preview_lines.append(f"{i}. {val:.3f} {unit}")
-        
-        self.preview_text.setPlainText("\n".join(preview_lines))
+            # Para otros parámetros, mostrar valores normales
+            preview_lines = [f"Se generarán {len(values)} variantes:\n"]
+            
+            if len(values) <= 15:
+                for i, val in enumerate(values, 1):
+                    preview_lines.append(f"{i}. {val:.3f} {unit}")
+            else:
+                for i, val in enumerate(values[:5], 1):
+                    preview_lines.append(f"{i}. {val:.3f} {unit}")
+                preview_lines.append(f"... ({len(values) - 10} más) ...")
+                for i, val in enumerate(values[-5:], len(values)-4):
+                    preview_lines.append(f"{i}. {val:.3f} {unit}")
+            
+            self.preview_text.setPlainText("\n".join(preview_lines))
     
     def _generate_variants(self):
         """Genera las variantes usando un worker thread."""
